@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const dropActive = ref(false)
 const showChapters = ref(false)
+const singleColumnMode = ref(false)
 const txtContent = ref<string[]>([])
 const page = ref(0)
 const maxPage = ref(0)
@@ -68,7 +69,7 @@ const addToBookshelf = () => {
 const contentStyle = computed(() => {
   if (contentElement.value) {
     const unitWidth = contentElement.value.clientWidth + columnGap.value
-    const columnWidth = contentElement.value.clientWidth / 2 - columnGap.value
+    const columnWidth = (singleColumnMode.value ? contentElement.value.clientWidth : contentElement.value.clientWidth / 2) - columnGap.value
     const totalWidth = unitWidth * page.value
     return {
       transform: `translateX(-${totalWidth}px)`,
@@ -219,7 +220,7 @@ const onClick = (e: MouseEvent) => {
   if (e.clientY && e.clientX) {
     if (e.clientX < pageWidth / 2) {
       prevPage()
-    }else{
+    } else {
       nextPage()
     }
   }
@@ -241,6 +242,10 @@ const backToBookshelf = () => {
   chapters.value = []
   currentChapterIndex.value = 0
   page.value = 0
+}
+const switchColumnMode = () => {
+  singleColumnMode.value = !singleColumnMode.value
+  setTimeout(refreshMaxPage, 100)
 }
 window.addEventListener('keydown', onKeyDown)
 window.addEventListener('wheel', onWheel)
@@ -277,14 +282,14 @@ onBeforeUnmount(() => {
     </div>
     <div class="bookshelf" v-if="txtContent.length === 0" @click="openUpload">
       <input type="file" ref="fileUpload" style="display:none;" @change="onFileSelect">
-      <div class="">
+      <div class="booklist">
         <div class="book" v-for="book in bookshelf" @click.stop="read(book)">
           <div class="book-page" v-for="i in 5" :style="{top:`-${(5-i)*2}px`,right:`-${(5-i)*2}px`}"></div>
           <div class="cover">{{ book.title }}</div>
         </div>
       </div>
       <div class="file-placeholder">
-        上传或将txt文件拖到此处
+        点按上传或将txt文件拖到此处
       </div>
     </div>
     <div
@@ -300,8 +305,13 @@ onBeforeUnmount(() => {
         <a @click.stop="showChapters = true">{{ chapters[currentChapterIndex] }}({{ currentChapterIndex + 1 }}/{{ chapters.length + 1 }})</a>
       </div>
       <div> {{ page + 1 }}/{{ maxPage + 1 }}</div>
-      <button class="btn" style="position: absolute;left: 0;top: 0" @click.stop="showChapters=true">打开目录</button>
-      <button class="btn" style="position: absolute;right: 0;top: 0" @click="backToBookshelf">回到书架</button>
+      <div class="left">
+        <button class="btn" @click.stop="showChapters=true">打开目录</button>
+        <button class="btn" @click.stop="switchColumnMode">{{ singleColumnMode ? '双列模式' : '单列模式' }}</button>
+      </div>
+      <div class="right">
+        <button class="btn" @click="backToBookshelf">回到书架</button>
+      </div>
     </div>
   </main>
 </template>
@@ -439,31 +449,51 @@ $page-indicator: 50px;
   height: $page-indicator;
   border-top: 1px solid var(--color-border);
   text-align: center;
+
+  .left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: row;
+
+    .btn {
+      margin-right: 8px;
+    }
+  }
+
+  .right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: flex;
+    flex-direction: row-reverse;
+
+    .btn {
+      margin-left: 8px;
+    }
+  }
 }
 
 .book {
   width: 150px;
   height: 200px;
   position: relative;
+  margin-right: 20px;
 }
 
 .cover {
   width: 100%;
   height: 100%;
-  background-color: #d9d9d9;
+  background-color: #cf8b5b;
   border-radius: 10px;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-  //display: flex;
-  //align-items: center;
-  //justify-content: center;
   color: black;
   padding: 30px;
-
   position: absolute;
 }
 
 .book-page {
-  content: '';
   border-radius: 10px;
   width: 100%;
   height: 100%;
@@ -477,5 +507,9 @@ $page-indicator: 50px;
   border: none;
   padding: 10px 15px;
   color: #fff;
+}
+
+.booklist {
+  display: flex;
 }
 </style>
