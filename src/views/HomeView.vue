@@ -25,6 +25,7 @@ interface Book {
   chapters: string[];
   contents: string[];
   history: WatchHistory;
+  showDelete?: boolean;
 }
 
 const bookshelf = ref<Book[]>([])
