@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "vite --host",
     "build": "run-p type-check build-only",
+    "build-gh": "run-p type-check build-only-gh",
     "preview": "vite preview",
     "build-only": "vite build",
+    "build-only-gh": "cross-env BUILD_PLATFORM=GH vite build",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "@vitejs/plugin-vue": "^4.0.0",
     "@vitejs/plugin-vue-jsx": "^3.0.0",
     "@vue/tsconfig": "^0.1.3",
+    "cross-env": "^7.0.3",
     "npm-run-all": "^4.1.5",
     "typescript": "~4.7.4",
     "vite": "^4.1.3",
