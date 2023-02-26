@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 const dropActive = ref(false)
 const showChapters = ref(false)
 const singleColumnMode = ref(false)
+const showMenu = ref(false)
 const txtContent = ref<string[]>([])
 const page = ref(0)
 const maxPage = ref(0)
@@ -218,8 +219,11 @@ const onClick = (e: MouseEvent) => {
   console.log(e)
   const pageWidth = window.innerWidth
   if (e.clientY && e.clientX) {
-    if (e.clientX < pageWidth / 2) {
+    const unitWidth = pageWidth / 3
+    if (e.clientX < unitWidth) {
       prevPage()
+    } else if (e.clientX < unitWidth * 2) {
+      showMenu.value = !showMenu.value
     } else {
       nextPage()
     }
@@ -300,7 +304,7 @@ onBeforeUnmount(() => {
     >
       {{ currentChapter.join('\n') }}
     </div>
-    <div class="page-indicator">
+    <div class="page-indicator" v-show="showMenu">
       <div>
         <a @click.stop="showChapters = true">{{ chapters[currentChapterIndex] }}({{ currentChapterIndex + 1 }}/{{ chapters.length + 1 }})</a>
       </div>
