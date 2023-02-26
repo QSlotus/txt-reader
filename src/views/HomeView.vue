@@ -108,6 +108,9 @@ const resolveFile = (files: FileList) => {
   if (files.length > 0) {
     const fr = new FileReader()
     const txt = files[0]
+    if (!txt.name.endsWith('.txt')) {
+      return alert('文件格式不正确')
+    }
     fr.onloadend = () => {
       if (!fr.result) {
         return
@@ -251,6 +254,11 @@ const switchColumnMode = () => {
   singleColumnMode.value = !singleColumnMode.value
   setTimeout(refreshMaxPage, 100)
 }
+const removeBook = (book: Book) => {
+  const index = bookshelf.value.indexOf(book)
+  bookshelf.value.splice(index, 1)
+  localStorage.setItem('bookshelf', JSON.stringify(bookshelf.value))
+}
 window.addEventListener('keydown', onKeyDown)
 window.addEventListener('wheel', onWheel)
 window.addEventListener('resize', onResize)
@@ -284,12 +292,13 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </div>
-    <div class="bookshelf" v-if="txtContent.length === 0" @click="openUpload">
+    <div class="bookshelf" v-if="txtContent.length === 0" @click.stop="openUpload">
       <input type="file" ref="fileUpload" style="display:none;" @change="onFileSelect">
       <div class="booklist">
-        <div class="book" v-for="book in bookshelf" @click.stop="read(book)">
+        <div class="book" v-for="book in bookshelf" @click.stop="read(book)" @contextmenu.prevent.stop="book.showDelete = !book.showDelete">
           <div class="book-page" v-for="i in 5" :style="{top:`-${(5-i)*2}px`,right:`-${(5-i)*2}px`}"></div>
           <div class="cover">{{ book.title }}</div>
+          <div class="book-delete" @click.stop="removeBook(book)" v-if="book.showDelete">删除</div>
         </div>
       </div>
       <div class="file-placeholder">
@@ -484,6 +493,13 @@ $page-indicator: 50px;
   height: 200px;
   position: relative;
   margin-right: 20px;
+
+  &-delete {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    cursor: pointer;
+  }
 }
 
 .cover {
