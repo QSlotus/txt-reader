@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const dropActive = ref(false)
 const showChapters = ref(false)
+const showBookmarks = ref(false)
 const singleColumnMode = ref(false)
 const showMenu = ref(false)
 const txtContent = ref<string[]>([])
@@ -10,6 +11,7 @@ const page = ref(0)
 const maxPage = ref(0)
 const contentElement = ref<HTMLElement>()
 const chaptersElement = ref<HTMLElement>()
+const bookmarksElement = ref<HTMLElement>()
 const columnGap = ref(30)
 const chapters = ref<string[]>([])
 const currentChapterIndex = ref(0)
@@ -33,6 +35,13 @@ try {
   bookshelf.value = JSON.parse(localStorage.getItem('bookshelf') || '[]')
 } catch (e) {
 }
+
+const bookmarks = ref<Bookmark[]>([])
+try {
+  bookmarks.value = JSON.parse(localStorage.getItem('bookmarks') || '[]')
+} catch (e) {
+}
+
 const currentBook = computed(() => bookshelf.value.find(i => i.title === currentTxt.value))
 
 watch(page, () => {
@@ -51,7 +60,7 @@ watch(currentChapterIndex, () => {
 const addToBookshelf = () => {
   const index = bookshelf.value.findIndex(i => i.title === currentTxt.value)
   const data = {
-    title: currentTxt.value || '',
+    title: currentTxt.value!,
     chapters: chapters.value,
     contents: txtContent.value,
     history: {
@@ -67,6 +76,27 @@ const addToBookshelf = () => {
   localStorage.setItem('bookshelf', JSON.stringify(bookshelf.value))
 }
 
+interface Bookmark {
+  title: string;
+  histories: WatchHistory[]
+}
+
+const addBookmark = () => {
+  const index = bookmarks.value.findIndex(i => i.title === currentTxt.value)
+  const history: WatchHistory = {
+    page: page.value,
+    chapterIndex: currentChapterIndex.value
+  }
+  if (index === -1) {
+    bookmarks.value.push({
+      title: currentTxt.value!,
+      histories: [history]
+    })
+  } else {
+    bookmarks.value[index].histories.push(history)
+  }
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks.value))
+}
 
 const contentStyle = computed(() => {
   if (contentElement.value) {
@@ -187,6 +217,8 @@ const onKeyDown = (e: KeyboardEvent) => {
     nextPage()
   } else if (e.key === 'd') {
     showChapters.value = !showChapters.value
+  } else if (e.key === 's') {
+    showBookmarks.value = !showBookmarks.value
   } else if (e.key === 'b') {
     backToBookshelf()
   }
@@ -216,9 +248,14 @@ const read = (book: Book) => {
   refreshMaxPage()
 }
 const onClick = (e: MouseEvent) => {
+
   if (e.target !== chaptersElement.value && showChapters.value) {
     showChapters.value = false
-    return
+    // return
+  }
+  if (e.target !== bookmarksElement.value && bookmarksElement.value) {
+    showBookmarks.value = false
+    // return
   }
   console.log(e)
   const pageWidth = window.innerWidth
@@ -270,6 +307,29 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('click', onClick)
 })
+const currentBookMarks = computed<WatchHistory[]>(() => bookmarks.value.find(i => i.title === currentTxt.value)?.histories || [])
+const go = (bookmark: WatchHistory) => {
+  currentChapterIndex.value = bookmark.chapterIndex
+  page.value = bookmark.page
+  refreshMaxPage()
+}
+const removeBookmark = (bookmark: WatchHistory) => {
+  const index = currentBookMarks.value.indexOf(bookmark)
+  currentBookMarks.value.splice(index, 1)
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks.value))
+}
+const onPageInput = (e: InputEvent) => {
+  let targetPage = Number((e.target as HTMLInputElement).value) - 1
+  if (Number.isNaN(targetPage)) {
+    targetPage = page.value
+  }
+  // console.log(e)
+  if (targetPage > maxPage.value) {
+    targetPage = maxPage.value
+  }
+
+  page.value = targetPage
+}
 </script>
 
 <template>
@@ -284,13 +344,25 @@ onBeforeUnmount(() => {
     <div class="chapters" ref="chaptersElement" :class="{show:showChapters}">
       <div class="chapters-content">
         <div class="chapters-list">
-          <div v-for="(chapter,index) in chapters" :class="{active: index === currentChapterIndex}" class="chapters-item" @click="setChapter(index)">
+          <h2>目录</h2>
+          <div v-for="(chapter,index) in chapters" :class="{active: index === currentChapterIndex}" class="chapters-item" @click.stop="setChapter(index)">
             {{ chapter }}
           </div>
         </div>
-        <button class="chapters-button" @click="showChapters = !showChapters">
+        <button class="chapters-button" @click.stop="showChapters = !showChapters">
           <span style="writing-mode: tb-rl;line-height: 18px;">{{ showChapters ? '隐 藏' : '目 录' }}</span>
         </button>
+      </div>
+    </div>
+    <div class="bookmarks" ref="bookmarksElement" :class="{show:showBookmarks}">
+      <div class="bookmarks-content">
+        <div class="bookmarks-list">
+          <h2>书签</h2>
+          <div v-for="(bookmark) in currentBookMarks" class="bookmarks-item" @click.stop="go(bookmark)">
+            {{ chapters[bookmark.chapterIndex] }} - 第{{ bookmark.page }}页
+            <a @click.stop="removeBookmark(bookmark)">&times;</a>
+          </div>
+        </div>
       </div>
     </div>
     <div class="bookshelf" v-if="txtContent.length === 0" @click.stop="openUpload">
@@ -314,23 +386,31 @@ onBeforeUnmount(() => {
     >
       {{ currentChapter.join('\n') }}
     </div>
-    <div class="page-indicator" v-show="showMenu">
+    <div class="page-indicator" v-if="txtContent.length>0">
       <div>
         <a @click.stop="showChapters = true">{{ chapters[currentChapterIndex] }}({{ currentChapterIndex + 1 }}/{{ chapters.length + 1 }})</a>
       </div>
-      <div> {{ page + 1 }}/{{ maxPage + 1 }}</div>
-      <div class="left">
-        <button class="btn" @click.stop="showChapters=true">打开目录</button>
-        <button class="btn" @click.stop="switchColumnMode">{{ singleColumnMode ? '双列模式' : '单列模式' }}</button>
-      </div>
-      <div class="right">
-        <button class="btn" @click="backToBookshelf">回到书架</button>
-      </div>
+      <div><input type="text" :value="page + 1" @input="onPageInput" class="input">/{{ maxPage + 1 }}</div>
+    </div>
+    <div class="toolbar" :class="{show:showMenu}">
+      <button class="btn" @click.stop="showChapters=true">打开目录</button>
+      <button class="btn" @click.stop="switchColumnMode">{{ singleColumnMode ? '双列模式' : '单列模式' }}</button>
+      <button class="btn" @click.stop="showBookmarks=true">打开书签</button>
+      <button class="btn" @click.stop="addBookmark">添加书签</button>
+      <button class="btn" @click.stop="backToBookshelf">回到书架</button>
     </div>
   </main>
 </template>
 <style lang="scss">
 $page-indicator: 50px;
+.input {
+  width: 20px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  min-width: 0;
+  text-align: right;
+}
 
 #main {
   //display: flex; //align-items: center; //justify-content: center;
@@ -429,7 +509,8 @@ $page-indicator: 50px;
     width: 100%;
     padding: 10px 20px;
     line-height: 18px;
-    border-bottom: 1px solid #EBEBEB;
+    border-top: 1px solid #EBEBEB;
+    cursor: pointer;
 
     &.active {
       color: hsla(160, 100%, 37%, 1);
@@ -460,32 +541,38 @@ $page-indicator: 50px;
 }
 
 .page-indicator {
-  height: $page-indicator;
   border-top: 1px solid var(--color-border);
+  height: $page-indicator;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 
-  .left {
-    position: absolute;
-    left: 0;
-    top: 0;
-    display: flex;
-    flex-direction: row;
+}
 
-    .btn {
-      margin-right: 8px;
-    }
+.toolbar {
+  position: fixed;
+  bottom: $page-indicator;
+  left: 0;
+  text-align: center;
+  transition: .2s;
+  transform: translateY(calc(100% + $page-indicator));
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: var(--color-background-soft);
+  width: 100%;
+
+  &.show {
+    transform: translateY(0);
   }
-
-  .right {
-    position: absolute;
-    right: 0;
-    top: 0;
-    display: flex;
-    flex-direction: row-reverse;
-
-    .btn {
-      margin-left: 8px;
-    }
+  .btn{
+    //margin-right: 8px;
+    flex: 1;
+    height: 100%;
   }
 }
 
@@ -528,9 +615,55 @@ $page-indicator: 50px;
   border: none;
   padding: 10px 15px;
   color: #fff;
+  transition: .3s;
+  cursor: pointer;
+
+  &:hover, &:focus {
+    background: hsl(160, 80%, 48%);
+    //outline: 1px solid #181818;
+  }
 }
 
 .booklist {
   display: flex;
+}
+
+.bookmarks {
+  top: 0;
+  position: fixed;
+  right: 0;
+  width: 300px;
+  transform: translateX(100%);
+  transition: .3s;
+  z-index: 1;
+  background-color: var(--color-background-soft);
+  height: 100vh;
+
+  h2 {
+    padding: 10px 20px;
+
+  }
+
+  &-item {
+    display: flex;
+    //align-items: center;
+    //justify-content: center;
+    width: 100%;
+    padding: 10px 20px;
+    line-height: 18px;
+    border-top: 1px solid #EBEBEB;
+    cursor: pointer;
+  }
+
+  &.show {
+    transform: translateX(0%);
+  }
+
+  &-list {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
 }
 </style>
