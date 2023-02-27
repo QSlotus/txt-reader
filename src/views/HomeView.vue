@@ -318,7 +318,7 @@ const removeBookmark = (bookmark: WatchHistory) => {
   currentBookMarks.value.splice(index, 1)
   localStorage.setItem('bookmarks', JSON.stringify(bookmarks.value))
 }
-const onPageInput = (e: InputEvent) => {
+const onPageInput = (e: Event) => {
   let targetPage = Number((e.target as HTMLInputElement).value) - 1
   if (Number.isNaN(targetPage)) {
     targetPage = page.value
