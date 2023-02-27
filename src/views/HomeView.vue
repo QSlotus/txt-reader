@@ -359,7 +359,7 @@ const onPageInput = (e: Event) => {
         <div class="bookmarks-list">
           <h2>书签</h2>
           <div v-for="(bookmark) in currentBookMarks" class="bookmarks-item" @click.stop="go(bookmark)">
-            {{ chapters[bookmark.chapterIndex] }} - 第{{ bookmark.page }}页
+            {{ chapters[bookmark.chapterIndex] }} - 第{{ bookmark.page + 1 }}页
             <a @click.stop="removeBookmark(bookmark)">&times;</a>
           </div>
         </div>
@@ -393,9 +393,9 @@ const onPageInput = (e: Event) => {
       <div><input type="text" :value="page + 1" @input="onPageInput" class="input">/{{ maxPage + 1 }}</div>
     </div>
     <div class="toolbar" :class="{show:showMenu}">
-      <button class="btn" @click.stop="showChapters=true">打开目录</button>
+      <button class="btn" @click.stop="showChapters=!showChapters">打开目录</button>
       <button class="btn" @click.stop="switchColumnMode">{{ singleColumnMode ? '双列模式' : '单列模式' }}</button>
-      <button class="btn" @click.stop="showBookmarks=true">打开书签</button>
+      <button class="btn" @click.stop="showBookmarks=!showBookmarks">打开书签</button>
       <button class="btn" @click.stop="addBookmark">添加书签</button>
       <button class="btn" @click.stop="backToBookshelf">回到书架</button>
     </div>
