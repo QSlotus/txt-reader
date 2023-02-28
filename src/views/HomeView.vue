@@ -216,9 +216,11 @@ const onKeyDown = (e: KeyboardEvent) => {
   } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
     nextPage()
   } else if (e.key === 'd') {
-    showChapters.value = !showChapters.value
+    showChapters.value = txtContent.value.length > 0 && !showChapters.value
   } else if (e.key === 's') {
-    showBookmarks.value = !showBookmarks.value
+    showBookmarks.value = txtContent.value.length > 0 && !showBookmarks.value
+  } else if (e.key === 't') {
+    showMenu.value = txtContent.value.length > 0 && !showMenu.value
   } else if (e.key === 'b') {
     backToBookshelf()
   }
@@ -569,8 +571,9 @@ $page-indicator: 50px;
   &.show {
     transform: translateY(0);
   }
-  .btn{
-    //margin-right: 8px;
+
+  .btn {
+    margin: 0 4px;
     flex: 1;
     height: 100%;
   }

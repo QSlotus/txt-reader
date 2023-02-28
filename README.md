@@ -8,6 +8,16 @@ txt在线阅读器
 [github](https://nalomu.github.io/txt-reader/)  
 [gite](https://nalomu.gitee.io/txt-reader/)
 
+## 使用方法
+
+- `d` 打开目录
+- `s` 打开书签栏
+- `t` 打开工具栏
+- `b` 回到书架
+- `↑`、`←`、`点击页面左1/3` 或 `滚轮上` 上一页
+- `↓`、`→`、`点击页面右1/3` 或 `滚轮下` 下一页
+- `t`、`点击页面中部1/3` 显示菜单栏
+
 ## Recommended IDE Setup
 
 [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
