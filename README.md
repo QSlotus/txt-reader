@@ -5,7 +5,8 @@ txt在线阅读器
 ## demo
 
 [在线demo](http://reader.nalomu.moe)  
-[github](https://nalomu.github.io/txt-reader/)
+[github](https://nalomu.github.io/txt-reader/)  
+[gite](https://nalomu.gitee.io/txt-reader/)
 
 ## Recommended IDE Setup
 
