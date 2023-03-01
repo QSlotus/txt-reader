@@ -18,14 +18,19 @@ const columnGap = ref(30)
 watch(() => store.page, () => {
   if (store.currentTxt && currentBook && currentBook.value?.history) {
     currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-    localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+    setTimeout(() => {
+      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+    })
+
   }
 })
 
 watch(() => store.currentChapterIndex, () => {
   if (store.currentTxt && currentBook && currentBook.value?.history) {
     currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-    localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+    setTimeout(()=>{
+      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+    })
   }
   refreshMaxPage()
 })
@@ -138,7 +143,7 @@ const onKeyDown = (e: KeyboardEvent) => {
       store.addBookmark()
     } else if (e.key === 'b') {
       store.backToBookshelf()
-    }else if (e.key === 'b') {
+    } else if (e.key === 'b') {
       store.backToBookshelf()
     }
   }
