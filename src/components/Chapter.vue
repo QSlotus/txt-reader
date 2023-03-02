@@ -6,11 +6,11 @@ const emit = defineEmits<{
 }>()
 </script>
 <template>
-  <div class="chapters" ref="chaptersElement" :class="{ show: store.showChapters }">
+  <div @click.stop class="chapters" ref="chaptersElement" :class="{ show: store.showChapters }">
     <div class="chapters-content">
       <div class="chapters-list">
         <h2>目录</h2>
-        <div v-for="(chapter,index) in store.chapters" :class="{ active: index === store.currentChapterIndex }" class="chapters-item" @click.stop="emit('chapter-change',index)">
+        <div v-for="(chapter,index) in store.chapters" :class="{ active: index === store.currentChapterIndex }" class="chapters-item" @click.stop="emit('chapter-change', index)">
           {{ chapter }}
         </div>
       </div>

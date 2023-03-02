@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { currentBook, currentChapter, store } from '@/store'
+import { currentChapter, store } from '@/store'
 import ToolBar from '@/components/ToolBar.vue'
 import Settings from '@/components/Settings.vue'
 import Chapter from '@/components/Chapter.vue'
@@ -10,28 +10,14 @@ import PageIndicator from '@/components/PageIndicator.vue'
 
 const dropActive = ref(false)
 const contentElement = ref<HTMLElement>()
-const chaptersElement = ref<HTMLElement>()
-const bookmarksElement = ref<HTMLElement>()
 const columnGap = ref(30)
 
 
-watch(() => store.page, () => {
-  if (store.currentTxt && currentBook && currentBook.value?.history) {
-    currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-    setTimeout(() => {
-      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
-    })
-
-  }
+window.addEventListener('close', () => {
+  store.storeHistory()
 })
 
 watch(() => store.currentChapterIndex, () => {
-  if (store.currentTxt && currentBook && currentBook.value?.history) {
-    currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-    setTimeout(()=>{
-      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
-    })
-  }
   refreshMaxPage()
 })
 watch(() => store.settings.lineHeight + store.settings.fontSize, () => {
@@ -143,8 +129,6 @@ const onKeyDown = (e: KeyboardEvent) => {
       store.addBookmark()
     } else if (e.key === 'b') {
       store.backToBookshelf()
-    } else if (e.key === 'b') {
-      store.backToBookshelf()
     }
   }
 }
@@ -162,19 +146,20 @@ const onWheel = (e: WheelEvent) => {
 
 
 const onResize = () => nextTick(() => {
-  // refreshMaxPage()
-  refreshMaxPage()
   const instance = getCurrentInstance()
   instance?.proxy?.$forceUpdate()
   setTimeout(refreshMaxPage, 100)
 })
 
 const onClick = (e: MouseEvent) => {
-  if ((e.target as HTMLElement) !== chaptersElement.value && store.showChapters) {
+  if (store.showChapters) {
     store.switchShowChapters()
   }
-  if ((e.target as HTMLElement) !== bookmarksElement.value && store.showBookmarks) {
+  if (store.showBookmarks) {
     store.switchShowBookmarks()
+  }
+  if (store.showSettings) {
+    store.switchSettings()
   }
   console.log(e)
   const pageWidth = window.innerWidth
@@ -189,6 +174,12 @@ const onClick = (e: MouseEvent) => {
     }
   }
 }
+
+const onChapterChange = (e: number) => {
+  store.page = 0
+  store.currentChapterIndex = e
+}
+
 watch(() => store.singleColumnMode, () => {
   setTimeout(refreshMaxPage, 100)
 })
@@ -215,7 +206,7 @@ onBeforeUnmount(() => {
     @dragover="dragover"
     :class="dropActive ? 'drop-active' : ''"
   >
-    <Chapter @chapter-change="store.currentChapterIndex=$event" />
+    <Chapter @chapter-change="onChapterChange" />
     <Bookmark />
     <template v-if="store.txtContent.length === 0">
       <Bookshelf @upload="resolveFile($event)" />

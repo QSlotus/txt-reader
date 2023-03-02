@@ -33,7 +33,7 @@ type StoreType = {
   removeBookmark: (bookmark: WatchHistory) => void;
   prevPage: () => void;
   nextPage: () => void;
-
+  storeHistory(): void
 }
 
 let bookshelf: Book[] = []
@@ -113,6 +113,7 @@ export const store = reactive<StoreType>({
     localStorage.setItem('bookmarks', JSON.stringify(this.bookmarks))
   },
   backToBookshelf() {
+    this.storeHistory()
     this.currentTxt = undefined
     this.txtContent = []
     this.chapters = []
@@ -170,6 +171,12 @@ export const store = reactive<StoreType>({
     } else if (store.currentChapterIndex < store.chapters.length - 1) {
       store.page = 0
       store.currentChapterIndex += 1
+    }
+  },
+  storeHistory() {
+    if (store.currentTxt && currentBook && currentBook.value?.history) {
+      currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
+      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
     }
   }
 })
