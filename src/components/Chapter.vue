@@ -73,6 +73,10 @@ $page-indicator: 50px;
     border-top: 1px solid #EBEBEB;
     cursor: pointer;
 
+    &.active {
+      color: hsla(160, 100%, 37%, 1);
+    }
+
   }
 
   &-button {
