@@ -25,7 +25,9 @@ interface MyDataBase extends DBSchema {
 
 export const dbPromise = openDB<MyDataBase>('bookshelf', 2, {
   upgrade(db) {
-    db.deleteObjectStore('bookshelf')
+    if (db.objectStoreNames.contains('bookshelf')) {
+      db.deleteObjectStore('bookshelf')
+    }
     db.createObjectStore('bookshelf', { keyPath: 'title' })
   },
   blocking(currentVersion: number, blockedVersion: number | null, event: IDBVersionChangeEvent) {
