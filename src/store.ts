@@ -1,6 +1,6 @@
 // store.js
-import { computed, nextTick, reactive, ref, watch } from 'vue'
-import type { ComputedRef } from 'vue'
+import { computed, nextTick, reactive, watch } from 'vue'
+import { dbPromise } from '@/db'
 
 type StoreType = {
   // props
@@ -37,10 +37,10 @@ type StoreType = {
 }
 
 let bookshelf: Book[] = []
-try {
-  bookshelf = JSON.parse(localStorage.getItem('bookshelf') || '[]')
-} catch (e) {
-}
+// try {
+//   bookshelf = JSON.parse(localStorage.getItem('bookshelf') || '[]')
+// } catch (e) {
+// }
 
 let bookmarks: Bookmark[] = []
 try {
@@ -136,12 +136,24 @@ export const store = reactive<StoreType>({
     } else {
       this.bookshelf.push(data)
     }
-    localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
+    dbPromise.then(db => {
+      console.log(data)
+      db.put('bookshelf', {
+        title: data.title,
+        chapters: JSON.stringify(data.chapters),
+        contents: JSON.stringify(data.contents),
+        history: JSON.stringify(data.history)
+      })
+    })
+    // localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
   },
   removeBook(book: Book) {
     const index = this.bookshelf.indexOf(book)
     this.bookshelf.splice(index, 1)
-    localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
+    dbPromise.then(db => {
+      db.delete('bookshelf', book.title)
+    })
+    // localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
   },
   removeBookmark(bookmark: WatchHistory) {
     const index = currentBookMarks.value.indexOf(bookmark)

@@ -7,11 +7,27 @@ import Chapter from '@/components/Chapter.vue'
 import Bookmark from '@/components/Bookmark.vue'
 import Bookshelf from '@/components/Bookshelf.vue'
 import PageIndicator from '@/components/PageIndicator.vue'
+import { dbPromise } from '@/db'
 
 const dropActive = ref(false)
 const contentElement = ref<HTMLElement>()
 const columnGap = ref(30)
 
+async function init() {
+  const db = await dbPromise
+  const books = await db.getAll('bookshelf')
+  store.bookshelf = books.map<Book>(i => {
+    return {
+      title: i.title,
+      chapters: JSON.parse(i.chapters),
+      contents: JSON.parse(i.contents),
+      history: JSON.parse(i.history),
+      showDelete: false
+    }
+  })
+}
+
+init()
 
 window.addEventListener('close', () => {
   store.storeHistory()
@@ -161,7 +177,6 @@ const onClick = (e: MouseEvent) => {
   if (store.showSettings) {
     store.switchSettings()
   }
-  console.log(e)
   const pageWidth = window.innerWidth
   if (e.clientY && e.clientX) {
     const unitWidth = pageWidth / 3
