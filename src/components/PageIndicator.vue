@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { store, currentChapterTitle } from '@/store'
+import { store, currentChapterTitle, currentBook } from '@/store'
 
 const onPageInput = (e: Event) => {
   let targetPage = Number((e.target as HTMLInputElement).value) - 1
@@ -15,9 +15,9 @@ const onPageInput = (e: Event) => {
 }
 </script>
 <template>
-  <div @click.stop class="page-indicator" v-if="store.txtContent.length>0">
+  <div @click.stop class="page-indicator" v-if="currentBook">
     <div>
-      <a @click="store.switchShowChapters()">{{ currentChapterTitle }}({{ store.currentChapterIndex + 1 }}/{{ store.chapters.length + 1 }})</a>
+      <a @click="store.switchShowChapters()">{{ currentChapterTitle.title }}({{ store.currentChapterIndex + 1 }}/{{ store.chapters.length + 1 }})</a>
     </div>
     <div><input type="text" :value="store.page + 1" @input="onPageInput" class="input">/{{ store.maxPage + 1 }}</div>
   </div>

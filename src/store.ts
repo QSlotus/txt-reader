@@ -8,41 +8,41 @@ type StoreType = {
   showBookmarks: boolean;
   singleColumnMode: boolean;
   showMenu: boolean;
-  txtContent: string[];
-  chapters: string[];
+  // txtContent: string[];
+  chapters: IChapter[];
   currentChapterIndex: number;
   currentTxt?: string;
   page: number;
   maxPage: number;
-  bookshelf: Book[];
-  bookmarks: Bookmark[];
+  bookshelf: IBook[];
+  bookmarks: IBookmark[];
   settings: { [key: string]: any };
   showSettings: boolean;
 
   // methods
-  switchShowChapters: () => void;
-  switchSettings: () => void;
-  switchColumnMode: () => void;
-  switchShowBookmarks: () => void;
-  addBookmark: () => void;
-  backToBookshelf: () => void;
-  switchShowMenu: () => void;
-  addToBookshelf: () => void;
-  removeBook: (book: Book) => void;
-  read: (book: Book) => void;
-  removeBookmark: (bookmark: WatchHistory) => void;
-  prevPage: () => void;
-  nextPage: () => void;
+  switchShowChapters(): void;
+  switchSettings(): void;
+  switchColumnMode(): void;
+  switchShowBookmarks(): void;
+  addBookmark(): void;
+  backToBookshelf(): void;
+  switchShowMenu(): void;
+  addToBookshelf(): IBook;
+  removeBook(book: IBook): void;
+  read(book: IBook): void;
+  removeBookmark(bookmark: IWatchHistory): void;
+  prevPage(): void;
+  nextPage(): void;
   storeHistory(): void
 }
 
-let bookshelf: Book[] = []
+let bookshelf: IBook[] = []
 // try {
 //   bookshelf = JSON.parse(localStorage.getItem('bookshelf') || '[]')
 // } catch (e) {
 // }
 
-let bookmarks: Bookmark[] = []
+let bookmarks: IBookmark[] = []
 try {
   bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]')
 } catch (e) {
@@ -59,14 +59,13 @@ try {
   settings = JSON.parse(localStorage.getItem('settings') || '{}')
 } catch (e) {
 }
-
-export const store = reactive<StoreType>({
+const defaultState: StoreType = {
   showChapters: false,
   showBookmarks: false,
   showSettings: false,
   singleColumnMode: false,
   showMenu: false,
-  txtContent: [],
+  // txtContent: [],
   chapters: [],
   currentChapterIndex: 0,
   currentTxt: undefined,
@@ -91,11 +90,11 @@ export const store = reactive<StoreType>({
     this.showMenu = !this.showMenu
   },
   addBookmark() {
-    if (this.txtContent.length <= 0) {
+    if (!currentBook.value) {
       return
     }
     const index = this.bookmarks.findIndex(i => i.title === this.currentTxt)
-    const history: WatchHistory = {
+    const history: IWatchHistory = {
       page: this.page,
       chapterIndex: this.currentChapterIndex
     }
@@ -115,17 +114,17 @@ export const store = reactive<StoreType>({
   backToBookshelf() {
     this.storeHistory()
     this.currentTxt = undefined
-    this.txtContent = []
+    // this.txtContent = []
     this.chapters = []
     this.currentChapterIndex = 0
     this.page = 0
   },
   addToBookshelf() {
     const index = this.bookshelf.findIndex(i => i.title === this.currentTxt)
-    const data = {
+    const data: IBook = {
       title: this.currentTxt!,
       chapters: this.chapters,
-      contents: this.txtContent,
+      // contents: this.txtContent,
       history: {
         page: this.page,
         chapterIndex: this.currentChapterIndex
@@ -141,13 +140,14 @@ export const store = reactive<StoreType>({
       db.put('bookshelf', {
         title: data.title,
         chapters: JSON.stringify(data.chapters),
-        contents: JSON.stringify(data.contents),
+        // contents: JSON.stringify(data.contents),
         history: JSON.stringify(data.history)
       })
     })
+    return data
     // localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
   },
-  removeBook(book: Book) {
+  removeBook(book: IBook) {
     const index = this.bookshelf.indexOf(book)
     this.bookshelf.splice(index, 1)
     dbPromise.then(db => {
@@ -155,14 +155,14 @@ export const store = reactive<StoreType>({
     })
     // localStorage.setItem('bookshelf', JSON.stringify(this.bookshelf))
   },
-  removeBookmark(bookmark: WatchHistory) {
+  removeBookmark(bookmark: IWatchHistory) {
     const index = currentBookMarks.value.indexOf(bookmark)
     currentBookMarks.value.splice(index, 1)
     localStorage.setItem('bookmarks', JSON.stringify(store.bookmarks))
   },
-  read(book: Book) {
+  read(book: IBook) {
     this.currentTxt = book.title
-    this.txtContent = book.contents
+    // this.txtContent = book.contents
     this.chapters = book.chapters
     this.page = book.history.page
     this.currentChapterIndex = book.history.chapterIndex
@@ -172,9 +172,7 @@ export const store = reactive<StoreType>({
       store.page = store.page - 1
     } else if (store.currentChapterIndex > 0) {
       store.currentChapterIndex -= 1
-      nextTick(() => nextTick(() => {
-        setTimeout(() => store.page = store.maxPage,)
-      }))
+      store.page = currentChapterTitle.value.maxPage || 0
     }
   },
   nextPage() {
@@ -194,27 +192,23 @@ export const store = reactive<StoreType>({
         db.put('bookshelf', {
           title: book.title,
           chapters: JSON.stringify(book.chapters),
-          contents: JSON.stringify(book.contents),
+          // contents: JSON.stringify(book.contents),
           history: JSON.stringify(book.history)
         })
       })
     }
   }
-})
+}
+
+export const store = reactive<StoreType>(defaultState)
 
 export const currentChapterTitle = computed(() => {
   return store.chapters[store.currentChapterIndex]
 })
-export const currentBookMarks = computed<WatchHistory[]>(() => store.bookmarks.find(i => i.title === store.currentTxt)?.histories || [])
+export const currentBookMarks = computed<IWatchHistory[]>(() => store.bookmarks.find(i => i.title === store.currentTxt)?.histories || [])
 
 export const currentChapter = computed(() => {
-  const nextIndex = store.currentChapterIndex + 1
-  let startIndex = store.txtContent.indexOf(store.chapters[store.currentChapterIndex])
-  if (startIndex === -1) {
-    startIndex = 0
-  }
-  const endIndex = store.txtContent.indexOf(store.chapters[nextIndex])
-  return store.txtContent.slice(startIndex, endIndex)
+  return store.chapters[store.currentChapterIndex]?.contents || []
 })
 
 export const currentBook = computed(() => store.bookshelf.find(i => i.title === store.currentTxt))

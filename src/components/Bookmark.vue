@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { store, currentBookMarks } from '@/store'
 
-const go = (bookmark: WatchHistory) => {
+const go = (bookmark: IWatchHistory) => {
   store.page = bookmark.page
   store.currentChapterIndex = bookmark.chapterIndex
 }
@@ -12,7 +12,7 @@ const go = (bookmark: WatchHistory) => {
       <div class="bookmarks-list">
         <h2>书签</h2>
         <div v-for="(bookmark) in currentBookMarks" class="bookmarks-item" @click.stop="go(bookmark)">
-          {{ store.chapters[bookmark.chapterIndex] }} - 第{{ bookmark.page + 1 }}页
+          {{ store.chapters[bookmark.chapterIndex].title }} - 第{{ bookmark.page + 1 }}页
           <a @click.stop="store.removeBookmark(bookmark)">&times;</a>
         </div>
       </div>

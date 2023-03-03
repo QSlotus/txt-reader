@@ -1,17 +1,24 @@
-interface WatchHistory {
+interface IWatchHistory {
   page: number
   chapterIndex: number
 }
 
-interface Book {
+interface IChapter {
+  title: string
+  contents: string[]
+  maxPage?: number
+}
+
+interface IBook {
   title: string;
-  chapters: string[];
-  contents: string[];
-  history: WatchHistory;
+  chapters: IChapter[];
+  // contents: string[];
+  history: IWatchHistory;
   showDelete?: boolean;
 }
-interface Bookmark {
+
+interface IBookmark {
   title: string;
-  histories: WatchHistory[]
+  histories: IWatchHistory[]
 }
 

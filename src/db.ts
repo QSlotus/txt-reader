@@ -9,7 +9,6 @@ interface MyDataBase extends DBSchema {
     value: {
       title: string,
       chapters: string,
-      contents: string,
       history: string
     }
   },
@@ -24,19 +23,15 @@ interface MyDataBase extends DBSchema {
   }
 }
 
-export const dbPromise = openDB<MyDataBase>('bookshelf', 1, {
+export const dbPromise = openDB<MyDataBase>('bookshelf', 2, {
   upgrade(db) {
+    db.deleteObjectStore('bookshelf')
     db.createObjectStore('bookshelf', { keyPath: 'title' })
-    db.createObjectStore('bookmarks', { keyPath: 'title' })
+  },
+  blocking(currentVersion: number, blockedVersion: number | null, event: IDBVersionChangeEvent) {
+    console.log('blocking')
+  },
+  blocked() {
+    console.log('blocked')
   }
 })
-
-export async function getBookshelfStore() {
-  const db = await dbPromise
-  return db.transaction('bookshelf').objectStore('bookshelf')
-}
-
-export async function getBookmarkStore() {
-  const db = await dbPromise
-  return db.transaction('bookmarks').objectStore('bookmarks')
-}

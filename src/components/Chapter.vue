@@ -11,7 +11,7 @@ const emit = defineEmits<{
       <div class="chapters-list">
         <h2>目录</h2>
         <div v-for="(chapter,index) in store.chapters" :class="{ active: index === store.currentChapterIndex }" class="chapters-item" @click.stop="emit('chapter-change', index)">
-          {{ chapter }}
+          {{ chapter.title }}
         </div>
       </div>
       <button class="chapters-button" @click.stop="store.switchShowChapters()">

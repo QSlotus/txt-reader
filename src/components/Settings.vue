@@ -14,28 +14,40 @@ const themes = ref([
   { value: 'theme-book', label: '书本' },
   { value: 'theme-paper', label: '纸张' }
 ])
+const form = ref<{ [key: string]: any }>(Object.assign({}, store.settings))
 watch(() => store.settings.theme, function () {
   for (const theme of themes.value) {
     document.documentElement.classList.remove(theme.value)
   }
   document.documentElement.classList.add(store.settings.theme)
 }, { immediate: true })
+
+function save() {
+  Object.keys(form.value).forEach(value => {
+    console.log(value,form.value[value])
+    store.settings[value] = form.value[value]
+  })
+  // Object.assign(store.settings, form)
+}
 </script>
 <template>
   <div class="settings" @click.stop :class="{show:store.showSettings}">
     <div class="form-item" v-for="field in fields" :key="field.field">
       <label :for="`form-item-${field.field}`" class="form-label">{{ field.label }}</label>
       <template v-if="field.type==='text'">
-        <input :id="`form-item-${field.field}`" type="text" v-model="store.settings[field.field]" @keydown.stop class="form-input">
+        <input :id="`form-item-${field.field}`" type="text" v-model="form[field.field]" @keydown.stop class="form-input">
       </template>
       <template v-if="field.type==='number'">
-        <input :id="`form-item-${field.field}`" type="number" v-model="store.settings[field.field]" @keydown.stop class="form-input">
+        <input :id="`form-item-${field.field}`" type="number" v-model="form[field.field]" @keydown.stop class="form-input">
       </template>
       <template v-if="field.type==='theme'">
-        <select :id="`form-item-${field.field}`" v-model="store.settings[field.field]" @keydown.stop class="form-input">
+        <select :id="`form-item-${field.field}`" v-model="form[field.field]" @keydown.stop class="form-input">
           <option v-for="theme in themes" :value="theme.value">{{ theme.label }}</option>
         </select>
       </template>
+    </div>
+    <div class="form-item">
+      <button class="btn" @click="save">保存</button>
     </div>
   </div>
 </template>
@@ -51,10 +63,12 @@ watch(() => store.settings.theme, function () {
   transform: translateX(-50%) translateY(-100%);
   background-color: var(--color-background-mute);
   transition: .3s;
-  &.show{
+
+  &.show {
     transform: translateX(-50%) translateY(0);
     box-shadow: 0 5px 5px rgba(0, 0, 0, .3);
   }
+
   //right: 0;
 }
 
