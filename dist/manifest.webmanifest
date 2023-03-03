@@ -1,1 +1,1 @@
-{"name":"txt阅读器","short_name":"txt阅读器","start_url":"/","display":"standalone","background_color":"#ffffff","lang":"en","scope":"/","description":"TXT在线阅读器","theme_color":"#ffffff","icons":[{"src":"logo.png","sizes":"192x166","type":"image/png"}]}
+{"name":"txt阅读器","short_name":"txt阅读器","start_url":"/txt-reader/","display":"standalone","background_color":"#ffffff","lang":"en","scope":"/txt-reader/","description":"TXT在线阅读器","theme_color":"#ffffff","icons":[{"src":"logo.png","sizes":"192x166","type":"image/png"}]}
