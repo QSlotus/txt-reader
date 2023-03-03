@@ -34,10 +34,10 @@ window.addEventListener('close', () => {
 })
 
 watch(() => store.currentChapterIndex, () => {
-  refreshMaxPage()
+  setTimeout(refreshMaxPage, )
 })
 watch(() => store.settings.lineHeight + store.settings.fontSize, () => {
-  refreshMaxPage()
+  setTimeout(refreshMaxPage, )
 })
 
 const contentStyle = computed(() => {
@@ -95,8 +95,8 @@ const resolveFile = (files?: FileList) => {
       const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/i
       store.chapters = store.txtContent.filter(item => chapterReg.test(item.toString()))
       store.chapters.unshift(txt.name)
-      refreshMaxPage()
       store.addToBookshelf()
+      setTimeout(refreshMaxPage, )
     }
     fr.readAsText(txt)
   }
@@ -164,7 +164,7 @@ const onWheel = (e: WheelEvent) => {
 const onResize = () => nextTick(() => {
   const instance = getCurrentInstance()
   instance?.proxy?.$forceUpdate()
-  setTimeout(refreshMaxPage, 100)
+  setTimeout(refreshMaxPage, )
 })
 
 const onClick = (e: MouseEvent) => {
@@ -196,7 +196,7 @@ const onChapterChange = (e: number) => {
 }
 
 watch(() => store.singleColumnMode, () => {
-  setTimeout(refreshMaxPage, 100)
+  setTimeout(refreshMaxPage, )
 })
 
 
@@ -266,7 +266,7 @@ $page-indicator: 50px;
 }
 
 .content {
-  transition: .1s;
+  //transition: .1s;
   white-space: pre-wrap;
   word-break: break-all;
   width: auto;
@@ -276,7 +276,7 @@ $page-indicator: 50px;
   //column-gap: 30px;
   //column-width: calc(50vw - 30px);
   font-size: 20px;
-  font-family: Simhei, sans-serif;
+  //font-family: Simhei, sans-serif;
 }
 
 * {

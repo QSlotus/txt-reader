@@ -173,7 +173,7 @@ export const store = reactive<StoreType>({
     } else if (store.currentChapterIndex > 0) {
       store.currentChapterIndex -= 1
       nextTick(() => nextTick(() => {
-        store.page = store.maxPage
+        setTimeout(() => store.page = store.maxPage,)
       }))
     }
   },

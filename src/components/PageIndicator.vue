@@ -15,9 +15,9 @@ const onPageInput = (e: Event) => {
 }
 </script>
 <template>
-  <div class="page-indicator" v-if="store.txtContent.length>0">
+  <div @click.stop class="page-indicator" v-if="store.txtContent.length>0">
     <div>
-      <a @click.stop="store.switchShowChapters()">{{ currentChapterTitle }}({{ store.currentChapterIndex + 1 }}/{{ store.chapters.length + 1 }})</a>
+      <a @click="store.switchShowChapters()">{{ currentChapterTitle }}({{ store.currentChapterIndex + 1 }}/{{ store.chapters.length + 1 }})</a>
     </div>
     <div><input type="text" :value="store.page + 1" @input="onPageInput" class="input">/{{ store.maxPage + 1 }}</div>
   </div>
