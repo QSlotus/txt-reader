@@ -188,7 +188,16 @@ export const store = reactive<StoreType>({
   storeHistory() {
     if (store.currentTxt && currentBook && currentBook.value?.history) {
       currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-      localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+      const book = currentBook.value
+      // localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
+      dbPromise.then(db => {
+        db.put('bookshelf', {
+          title: book.title,
+          chapters: JSON.stringify(book.chapters),
+          contents: JSON.stringify(book.contents),
+          history: JSON.stringify(book.history)
+        })
+      })
     }
   }
 })
