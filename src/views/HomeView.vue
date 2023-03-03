@@ -77,6 +77,9 @@ function refreshMaxPage() {
       // const instance = getCurrentInstance()
       // instance?.proxy?.$forceUpdate()
       styleKey.value = Math.random()
+      if (store.page > store.maxPage) {
+        store.page = store.maxPage
+      }
     })
   })
 }
