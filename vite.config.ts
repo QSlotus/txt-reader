@@ -14,19 +14,14 @@ export default defineConfig({
   plugins: [vue(), vueJsx(), VitePWA({
     registerType: 'autoUpdate',
     manifest: {
-      name: 'My Awesome App',
-      short_name: 'MyApp',
-      description: 'My Awesome App description',
+      name: 'txt阅读器',
+      short_name: 'txt阅读器',
+      description: 'TXT在线阅读器',
       theme_color: '#ffffff',
       icons: [
         {
-          src: 'pwa-192x192.png',
-          sizes: '192x192',
-          type: 'image/png'
-        },
-        {
-          src: 'pwa-512x512.png',
-          sizes: '512x512',
+          src: 'logo.png',
+          sizes: '192x166',
           type: 'image/png'
         }
       ]
