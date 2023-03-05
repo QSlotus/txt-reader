@@ -103,16 +103,28 @@ const resolveFile = (files?: FileList) => {
         .replace(/\r/g, '\n')
         .split('\n')
       const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
-      store.chapters = txtContent
-        .filter(item => chapterReg.test(item.toString()))
+      type T = { index: number, title: string, contents: string[] }
+      const chapters: T[] = []
+      for (let i = 0; i < txtContent.length; i++) {
+        if (txtContent[i].match(chapterReg)) {
+          chapters.push({
+            index: i,
+            title: txtContent[i],
+            contents: []
+          })
+        }
+      }
+      store.chapters = chapters
         .map<IChapter>((value, index, array) => {
-          const currentIndex = txtContent.indexOf(value)
-          let nextIndex = txtContent.indexOf(array[index + 1])
-          if (nextIndex === -1) {
+          const currentIndex = value.index
+          let nextIndex
+          if (array[index + 1]) {
+            nextIndex = array[index + 1].index
+          } else {
             nextIndex = txtContent.length
           }
           return {
-            title: value,
+            title: value.title,
             contents: txtContent.slice(currentIndex, nextIndex)
           }
         })
@@ -279,10 +291,12 @@ const setChapterPages = async () => {
     </template>
     <template v-else>
       <div class="content" ref="contentElement" :style="contentStyle">
-        {{ currentChapter.join('\n') }}
+        <h2 v-if="currentChapter[0]">{{ currentChapter[0] }}</h2>
+        {{ currentChapter.slice(1, currentChapter.length).join('\n') }}
       </div>
       <div class="hidden-content" ref="hiddenContentRef" v-if="computingPage && computingContent.length > 0" :style="contentStyle">
-        {{ computingContent.join('\n') }}
+        <h2 v-if="computingContent[0]">{{ computingContent[0] }}</h2>
+        {{ computingContent.slice(1, currentChapter.length).join('\n') }}
       </div>
     </template>
     <PageIndicator />

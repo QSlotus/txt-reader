@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 
 // console.log(process.env)
-console.log(process.env.BUILD_PLATFORM)
+// console.log(process.env.BUILD_PLATFORM)
 // https://vitejs.dev/config/
 export default defineConfig({
   base: process.env.BUILD_PLATFORM === 'GH' ? '/txt-reader/' : '/',
