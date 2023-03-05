@@ -19,7 +19,13 @@ const onPageInput = (e: Event) => {
     <div>
       <a @click="store.switchShowChapters()">{{ currentChapterTitle.title }}({{ store.currentChapterIndex + 1 }}/{{ store.chapters.length + 1 }})</a>
     </div>
-    <div><input type="text" :value="store.page + 1" @input="onPageInput" class="input">/{{ store.maxPage + 1 }}</div>
+    <div>
+      <button class="btn small" @click="store.prevChapter()">上一章</button>
+      <span style="display: inline-block;margin: 0 8px">
+        <input type="text" :value="store.page + 1" @input="onPageInput" class="input">/{{ store.maxPage + 1 }}
+      </span>
+      <button class="btn small" @click="store.nextChapter()">下一章</button>
+    </div>
   </div>
 </template>
 <style lang="scss">

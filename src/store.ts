@@ -33,7 +33,9 @@ type StoreType = {
   removeBookmark(bookmark: IWatchHistory): void;
   prevPage(): void;
   nextPage(): void;
-  storeHistory(): void
+  storeHistory(): void;
+  prevChapter(): void;
+  nextChapter(): void;
 }
 
 let bookshelf: IBook[] = []
@@ -75,6 +77,7 @@ const defaultState: StoreType = {
   bookmarks,
   settings: Object.assign({}, defaultSettings, settings),
   switchShowChapters() {
+    if (!currentBook.value) return
     this.showChapters = !this.showChapters
   },
   switchSettings() {
@@ -84,15 +87,14 @@ const defaultState: StoreType = {
     this.singleColumnMode = !this.singleColumnMode
   },
   switchShowBookmarks() {
+    if (!currentBook.value) return
     this.showBookmarks = !this.showBookmarks
   },
   switchShowMenu() {
     this.showMenu = !this.showMenu
   },
   addBookmark() {
-    if (!currentBook.value) {
-      return
-    }
+    if (!currentBook.value) return
     const index = this.bookmarks.findIndex(i => i.title === this.currentTxt)
     const history: IWatchHistory = {
       page: this.page,
@@ -118,6 +120,10 @@ const defaultState: StoreType = {
     this.chapters = []
     this.currentChapterIndex = 0
     this.page = 0
+    this.showBookmarks = false
+    this.showChapters = false
+    this.showMenu = false
+    this.showSettings = false
   },
   addToBookshelf() {
     const index = this.bookshelf.findIndex(i => i.title === this.currentTxt)
@@ -196,6 +202,18 @@ const defaultState: StoreType = {
           history: JSON.stringify(book.history)
         })
       })
+    }
+  },
+  nextChapter() {
+    if (this.currentChapterIndex < this.chapters.length - 1) {
+      this.page = 0
+      this.currentChapterIndex++
+    }
+  },
+  prevChapter() {
+    if (this.currentChapterIndex > 0) {
+      this.page = 0
+      this.currentChapterIndex--
     }
   }
 }
