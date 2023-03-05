@@ -29,12 +29,10 @@ async function init() {
 
 init()
 
-window.addEventListener('close', () => {
-  store.storeHistory()
-})
-
-watch(() => store.currentChapterIndex, () => {
-  store.maxPage = store.chapters[store.currentChapterIndex]?.maxPage || 0
+window.addEventListener('beforeunload', async (e) => {
+  // if (document.visibilityState === 'hidden') {
+    await store.storeHistory()
+  // }
 })
 
 watch(() => store.settings.lineHeight + store.settings.fontSize, () => {

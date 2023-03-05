@@ -189,18 +189,16 @@ const defaultState: StoreType = {
       store.currentChapterIndex += 1
     }
   },
-  storeHistory() {
+  async storeHistory() {
     if (store.currentTxt && currentBook && currentBook.value?.history) {
       currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
-      const book = currentBook.value
-      // localStorage.setItem('bookshelf', JSON.stringify(store.bookshelf))
-      dbPromise.then(db => {
-        db.put('bookshelf', {
-          title: book.title,
-          chapters: JSON.stringify(book.chapters),
-          // contents: JSON.stringify(book.contents),
-          history: JSON.stringify(book.history)
-        })
+      const book = Object.assign({}, currentBook.value)
+      const db = await dbPromise
+      await db.put('bookshelf', {
+        title: book.title,
+        chapters: JSON.stringify(book.chapters),
+        // contents: JSON.stringify(book.contents),
+        history: JSON.stringify(book.history)
       })
     }
   },
@@ -235,4 +233,14 @@ watch(() => store.settings, () => {
   localStorage.setItem('settings', JSON.stringify(store.settings))
 }, {
   deep: true
+})
+
+
+watch(() => store.currentChapterIndex, () => {
+  store.maxPage = store.chapters[store.currentChapterIndex]?.maxPage || 0
+  store.storeHistory()
+})
+
+watch(() => store.page, () => {
+  store.storeHistory()
 })
