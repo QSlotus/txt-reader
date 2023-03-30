@@ -23,7 +23,7 @@ const onFileSelect = () => {
   <div class="bookshelf" @click.stop="openUpload">
     <input type="file" ref="fileUpload" style="display:none;" @change="onFileSelect">
     <div class="booklist">
-      <div class="book" v-for="book in store.bookshelf" @click.stop="store.read(book)" @contextmenu.prevent.stop="book.showDelete = !book.showDelete">
+      <div class="book" v-for="book in store.bookshelf" :key="book.title" @click.stop="store.read(book)" @contextmenu.prevent.stop="book.showDelete = !book.showDelete">
         <div class="book-page" v-for="i in 5" :style="{top:`-${(5-i)*2}px`,right:`-${(5-i)*2}px`}"></div>
         <div class="cover">{{ book.title }}</div>
         <div class="book-delete" @click.stop="store.removeBook(book)" v-if="book.showDelete">删除</div>
@@ -95,6 +95,11 @@ $page-indicator: 50px;
   color: black;
   padding: 30px;
   position: absolute;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+  display: -webkit-box;
 }
 
 .book-page {
@@ -104,6 +109,7 @@ $page-indicator: 50px;
   position: absolute;
   background-color: #d9d9d9;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  border-left: 2px solid #000;
 }
 
 .booklist {
