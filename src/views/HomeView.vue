@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { currentBook, currentChapter, currentChapterTitle, store } from '@/store'
 import ToolBar from '@/components/ToolBar.vue'
 import Settings from '@/components/Settings.vue'
@@ -31,7 +31,7 @@ init()
 
 window.addEventListener('beforeunload', async (e) => {
   // if (document.visibilityState === 'hidden') {
-    await store.storeHistory()
+  await store.storeHistory()
   // }
 })
 
@@ -65,10 +65,12 @@ function refreshMaxPage() {
     setTimeout(async () => {
       if (!currentBook.value) return
       computingPage.value = true
+      await nextTick()
       for (let i = 0; i < (currentBook.value && currentBook.value.chapters.length); i++) {
         computingChapterIndex.value = i
         await setChapterPages()
-        await (new Promise(resolve => setTimeout(resolve)))
+        await nextTick()
+        await (new Promise(resolve => setTimeout(resolve, 1)))
       }
       computingPage.value = false
       store.maxPage = currentChapterTitle.value.maxPage || 0
@@ -262,7 +264,7 @@ const computingContent = computed(() => {
 })
 const computingPage = ref(false)
 const setChapterPages = async () => {
-  await nextTick(async () => {
+  await nextTick(() => {
     if (hiddenContentRef.value?.scrollWidth && hiddenContentRef.value?.clientWidth) {
       const pageWidth = hiddenContentRef.value.clientWidth + columnGap.value
       const page = (hiddenContentRef.value.scrollWidth + columnGap.value) / pageWidth
