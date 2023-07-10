@@ -236,7 +236,7 @@ const onChapterChange = (e: number) => {
 }
 
 watch(() => store.singleColumnMode, () => {
-  // setTimeout(refreshMaxPage)
+  refreshMaxPage()
 })
 
 // compute chapters max page when book change
