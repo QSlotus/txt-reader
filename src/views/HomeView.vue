@@ -12,6 +12,10 @@ import { dbPromise } from '@/db'
 const dropActive = ref(false)
 const contentElement = ref<HTMLElement>()
 const columnGap = ref(30)
+const {
+  proxy: { $forceUpdate }
+}: any = getCurrentInstance()
+const instance = getCurrentInstance()
 
 async function init() {
   const db = await dbPromise
@@ -41,7 +45,6 @@ watch(() => store.settings.lineHeight + store.settings.fontSize, () => {
 const styleKey = ref(0)
 
 const contentStyle = computed(() => {
-  console.log(styleKey.value)
   if (contentElement.value) {
     const unitWidth = contentElement.value.clientWidth + columnGap.value
     const columnWidth = (store.singleColumnMode ? contentElement.value.clientWidth : contentElement.value.clientWidth / 2) - columnGap.value
@@ -61,10 +64,10 @@ const contentStyle = computed(() => {
  * 重置最大页数，在页面发生变化时使用
  */
 function refreshMaxPage() {
+  computingPage.value = true
   nextTick(() => {
     setTimeout(async () => {
       if (!currentBook.value) return
-      computingPage.value = true
       await nextTick()
       for (let i = 0; i < (currentBook.value && currentBook.value.chapters.length); i++) {
         computingChapterIndex.value = i
@@ -74,8 +77,6 @@ function refreshMaxPage() {
       }
       computingPage.value = false
       store.maxPage = currentChapterTitle.value.maxPage || 0
-      // const instance = getCurrentInstance()
-      // instance?.proxy?.$forceUpdate()
       styleKey.value = Math.random()
       if (store.page > store.maxPage) {
         store.page = store.maxPage
@@ -130,7 +131,7 @@ const resolveFile = (files?: FileList) => {
         })
       store.chapters.unshift({
         title: txt.name,
-        contents: [txt.name]
+        contents: [txt.name].concat(txtContent.slice(0, chapters[0]?.index || 0))
       })
       store.currentChapterIndex = 0
       store.addToBookshelf()
@@ -296,7 +297,7 @@ const setChapterPages = async () => {
       </div>
       <div class="hidden-content" ref="hiddenContentRef" v-if="computingPage && computingContent.length > 0" :style="contentStyle">
         <h2 v-if="computingContent[0]">{{ computingContent[0] }}</h2>
-        {{ computingContent.slice(1, currentChapter.length).join('\n') }}
+        {{ computingContent.slice(1, computingContent.length).join('\n') }}
       </div>
     </template>
     <PageIndicator />

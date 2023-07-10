@@ -56,6 +56,14 @@ const defaultSettings = {
   theme: 'default'
 }
 
+function getStorage(key: string) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || 'null')
+  } catch (e) {
+    return null
+  }
+}
+
 let settings = {}
 try {
   settings = JSON.parse(localStorage.getItem('settings') || '{}')
@@ -65,7 +73,7 @@ const defaultState: StoreType = {
   showChapters: false,
   showBookmarks: false,
   showSettings: false,
-  singleColumnMode: false,
+  singleColumnMode: !!getStorage('singleColumnMode'),
   showMenu: false,
   // txtContent: [],
   chapters: [],
