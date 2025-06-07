@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+<script lang="ts" setup>
+import { computed, type CSSProperties, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { currentBook, currentChapter, currentChapterTitle, store } from '@/store'
 import ToolBar from '@/components/ToolBar.vue'
 import Settings from '@/components/Settings.vue'
@@ -50,12 +50,15 @@ const contentStyle = computed(() => {
     const columnWidth = (store.singleColumnMode ? contentElement.value.clientWidth : contentElement.value.clientWidth / 2) - columnGap.value
     const totalWidth = unitWidth * store.page
     return {
+      transition: `transform ${showContent.value ? '150' : '0'}ms ease-in-out`,
+      visibility: showContent.value ? 'visible' : 'hidden',
       transform: `translateX(-${totalWidth}px)`,
       columnWidth: `${columnWidth}px`,
+      columnFill: 'auto',
       columnGap: `${columnGap.value}px`,
       fontSize: `${store.settings.fontSize}px`,
       lineHeight: `${store.settings.lineHeight}`
-    }
+    } as CSSProperties
   }
 })
 
@@ -92,52 +95,66 @@ const resolveFile = (files?: FileList) => {
     if (!txt.name.endsWith('.txt')) {
       return alert('文件格式不正确')
     }
+
     fr.onloadend = () => {
-      if (!fr.result) {
-        return
+      if (!(fr.result instanceof ArrayBuffer)) return
+
+      // 默认尝试解码为 UTF-8
+      let decoder = new TextDecoder('utf-8', { fatal: false })
+      let txtContent = decoder.decode(new Uint8Array(fr.result))
+
+      // 判断是否乱码（简单判断法：是否有大量  替换字符）
+      if (txtContent.includes('\uFFFD')) {
+        // 尝试使用 GBK 解码
+        try {
+          decoder = new TextDecoder('gbk', { fatal: true })
+          txtContent = decoder.decode(new Uint8Array(fr.result))
+        } catch (e) {
+          console.warn('无法用 GBK 解码，可能是其他编码格式。')
+        }
       }
+
       store.currentTxt = txt.name
-      const txtContent = fr
-        .result
-        .toString()
+
+      // 处理换行符 & 分割成数组
+      const contentLines = txtContent
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
         .split('\n')
+
       const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
       type T = { index: number, title: string, contents: string[] }
       const chapters: T[] = []
-      for (let i = 0; i < txtContent.length; i++) {
-        if (txtContent[i].match(chapterReg)) {
+
+      for (let i = 0; i < contentLines.length; i++) {
+        if (contentLines[i].match(chapterReg)) {
           chapters.push({
             index: i,
-            title: txtContent[i],
+            title: contentLines[i],
             contents: []
           })
         }
       }
-      store.chapters = chapters
-        .map<IChapter>((value, index, array) => {
-          const currentIndex = value.index
-          let nextIndex
-          if (array[index + 1]) {
-            nextIndex = array[index + 1].index
-          } else {
-            nextIndex = txtContent.length
-          }
-          return {
-            title: value.title,
-            contents: txtContent.slice(currentIndex, nextIndex)
-          }
-        })
+
+      store.chapters = chapters.map<IChapter>((value, index, array) => {
+        const currentIndex = value.index
+        let nextIndex = array[index + 1]?.index ?? contentLines.length
+        return {
+          title: value.title,
+          contents: contentLines.slice(currentIndex, nextIndex)
+        }
+      })
+
       store.chapters.unshift({
         title: txt.name,
-        contents: [txt.name].concat(txtContent.slice(0, chapters[0]?.index || 0))
+        contents: [txt.name].concat(contentLines.slice(0, chapters[0]?.index || 0))
       })
+
       store.currentChapterIndex = 0
       store.addToBookshelf()
-      // setTimeout(refreshMaxPage)
     }
-    fr.readAsText(txt)
+
+    fr.readAsArrayBuffer(txt)
   }
 }
 const drop = (e: DragEvent) => {
@@ -273,16 +290,27 @@ const setChapterPages = async () => {
     }
   })
 }
+const showContent = ref(true)
+watch(() => store.currentChapterIndex,
+  async () => {
+    // 隐藏 contentElement 一帧
+    showContent.value = false
+
+    await nextTick()
+
+    // 下一帧恢复显示（或你可以执行其他操作）
+    showContent.value = true
+  })
 </script>
 
 <template>
   <main
     id="main"
-    @drop="drop"
-    @dragleave="dragleave"
-    @dragenter="dragenter"
-    @dragover="dragover"
     :class="dropActive ? 'drop-active' : ''"
+    @dragenter="dragenter"
+    @dragleave="dragleave"
+    @dragover="dragover"
+    @drop="drop"
   >
     <div v-if="currentBook && computingPage" class="computing">正在计算页数{{ computingChapterIndex + 1 }}/ {{ currentBook.chapters.length }}</div>
     <Chapter @chapter-change="onChapterChange" />
@@ -291,11 +319,11 @@ const setChapterPages = async () => {
       <Bookshelf @upload="resolveFile($event)" />
     </template>
     <template v-else>
-      <div class="content" ref="contentElement" :style="contentStyle">
+      <div ref="contentElement" :style="contentStyle" class="content">
         <h2 v-if="currentChapter[0]">{{ currentChapter[0] }}</h2>
         {{ currentChapter.slice(1, currentChapter.length).join('\n') }}
       </div>
-      <div class="hidden-content" ref="hiddenContentRef" v-if="computingPage && computingContent.length > 0" :style="contentStyle">
+      <div v-if="computingPage && computingContent.length > 0" ref="hiddenContentRef" :style="contentStyle" class="hidden-content">
         <h2 v-if="computingContent[0]">{{ computingContent[0] }}</h2>
         {{ computingContent.slice(1, computingContent.length).join('\n') }}
       </div>
@@ -349,7 +377,6 @@ $page-indicator: 50px;
 }
 
 .content {
-  transition: .1s;
   white-space: pre-wrap;
   word-break: break-all;
   width: auto;

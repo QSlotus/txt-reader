@@ -6,7 +6,7 @@ txt在线阅读器
 
 [在线demo](http://reader.nalomu.moe)  
 [github](https://nalomu.github.io/txt-reader/)  
-[gite](https://nalomu.gitee.io/txt-reader/)
+[gitee](https://nalomu.gitee.io/txt-reader/)
 
 ## 使用方法
 
