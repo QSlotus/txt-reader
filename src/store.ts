@@ -51,8 +51,8 @@ try {
 }
 
 const defaultSettings = {
-  fontSize: 18,
-  lineHeight: 2,
+  fontSize: 36,
+  lineHeight: 72,
   theme: 'default'
 }
 

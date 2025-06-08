@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, type CSSProperties, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { currentBook, currentChapter, currentChapterTitle, store } from '@/store'
 import ToolBar from '@/components/ToolBar.vue'
 import Settings from '@/components/Settings.vue'
@@ -10,12 +10,27 @@ import PageIndicator from '@/components/PageIndicator.vue'
 import { dbPromise } from '@/db'
 
 const dropActive = ref(false)
-const contentElement = ref<HTMLElement>()
 const columnGap = ref(30)
-const {
-  proxy: { $forceUpdate }
-}: any = getCurrentInstance()
-const instance = getCurrentInstance()
+
+const canvasElement = ref<HTMLCanvasElement>()
+const ctx = ref<CanvasRenderingContext2D | null>()
+const canvasWidth = ref(0)
+const canvasHeight = ref(0)
+const fontSize = computed(() => store.settings.fontSize)
+const lineHeight = computed(() => store.settings.lineHeight)
+const padding = 30 // 页面内边距
+let pages: string[][] = [] // 分好页的章节内容
+
+function initCanvas() {
+  const el = canvasElement.value
+  if (!el) return
+  const devicePixelRatio = window.devicePixelRatio || 1
+  canvasWidth.value = el.clientWidth * devicePixelRatio
+  canvasHeight.value = el.clientHeight * devicePixelRatio
+  el.width = canvasWidth.value
+  el.height = canvasHeight.value
+  ctx.value = el.getContext('2d')
+}
 
 async function init() {
   const db = await dbPromise
@@ -32,61 +47,204 @@ async function init() {
 }
 
 init()
-
-window.addEventListener('beforeunload', async (e) => {
-  // if (document.visibilityState === 'hidden') {
-  await store.storeHistory()
-  // }
+watch(() => currentBook.value, async (newVal) => {
+  await nextTick()
+  initCanvas()
+  console.log('change book:', newVal, ctx)
+  await refreshMaxPage(newVal)
+  pages = splitTextToPages(currentChapter.value)
+  drawPage(store.page)
+})
+watch(() => currentChapter.value, () => {
+  pages = splitTextToPages(currentChapter.value)
+  drawPage(store.page)
+})
+watch(() => store.page, (newPage) => {
+  drawPage(newPage)
 })
 
-watch(() => store.settings.lineHeight + store.settings.fontSize, () => {
-  refreshMaxPage()
-})
-const styleKey = ref(0)
-
-const contentStyle = computed(() => {
-  if (contentElement.value) {
-    const unitWidth = contentElement.value.clientWidth + columnGap.value
-    const columnWidth = (store.singleColumnMode ? contentElement.value.clientWidth : contentElement.value.clientWidth / 2) - columnGap.value
-    const totalWidth = unitWidth * store.page
-    return {
-      transition: `transform ${showContent.value ? '150' : '0'}ms ease-in-out`,
-      visibility: showContent.value ? 'visible' : 'hidden',
-      transform: `translateX(-${totalWidth}px)`,
-      columnWidth: `${columnWidth}px`,
-      columnFill: 'auto',
-      columnGap: `${columnGap.value}px`,
-      fontSize: `${store.settings.fontSize}px`,
-      lineHeight: `${store.settings.lineHeight}`
-    } as CSSProperties
-  }
-})
-
+const computingChapterIndex = ref(0)
+const computingPage = ref(false)
 
 /**
  * 重置最大页数，在页面发生变化时使用
  */
-function refreshMaxPage() {
+async function refreshMaxPage(book: IBook | undefined) {
+  book = book || currentBook.value
   computingPage.value = true
-  nextTick(() => {
-    setTimeout(async () => {
-      if (!currentBook.value) return
-      await nextTick()
-      for (let i = 0; i < (currentBook.value && currentBook.value.chapters.length); i++) {
-        computingChapterIndex.value = i
-        await setChapterPages()
-        await nextTick()
-        await (new Promise(resolve => setTimeout(resolve, 1)))
-      }
-      computingPage.value = false
-      store.maxPage = currentChapterTitle.value.maxPage || 0
-      styleKey.value = Math.random()
-      if (store.page > store.maxPage) {
-        store.page = store.maxPage
-      }
-    })
-  })
+  if (!book) return
+  for (let i = 0; i < (book && book.chapters.length); i++) {
+    await nextTick()
+    await (new Promise(resolve => setTimeout(resolve, 1)))
+    computingChapterIndex.value = i
+    const tmpPages = splitTextToPages(book!.chapters[i].contents)
+    console.log('tmpPages:', tmpPages)
+    book!.chapters[i].maxPage = tmpPages.length - 1
+  }
+  console.log(book.chapters)
+  computingPage.value = false
+  store.maxPage = currentChapterTitle.value.maxPage || 0
+  if (store.page > store.maxPage) {
+    store.page = store.maxPage
+  }
 }
+
+function splitTextToPages(textLines: string[]): string[][] {
+  const linesPerPage: string[] = []
+  const result: string[][] = []
+  let heightUsed = padding
+
+  const ctxCtx = ctx.value
+  if (!ctxCtx) return []
+
+  ctxCtx.font = `${fontSize.value}px sans-serif`
+  ctxCtx.textBaseline = 'top'
+
+  for (const line of textLines) {
+    const words = line.split('')
+    let currentLine = ''
+    for (const word of words) {
+      const testLine = currentLine + word
+      const { width } = ctxCtx.measureText(testLine)
+      if (width > canvasWidth.value - padding * 2 && currentLine !== '') {
+        linesPerPage.push(currentLine)
+        heightUsed += lineHeight.value
+        currentLine = word
+      } else {
+        currentLine = testLine
+      }
+    }
+    if (currentLine) {
+      linesPerPage.push(currentLine)
+      heightUsed += lineHeight.value
+    }
+
+    if (heightUsed >= canvasHeight.value - padding) {
+      result.push([...linesPerPage])
+      linesPerPage.length = 0
+      heightUsed = padding
+    }
+  }
+
+  if (linesPerPage.length > 0) {
+    result.push(linesPerPage)
+  }
+
+  return result
+}
+
+// 绘制当前页面内容
+function drawPage(pageIndex: number) {
+  console.log(pages, pageIndex)
+  const ctxVal = ctx.value
+  if (!ctxVal || !pages[pageIndex]) return
+
+  ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
+  // 设置样式
+  ctxVal.fillStyle = 'white'
+  ctxVal.font = `${fontSize.value}px sans-serif`
+  ctxVal.textBaseline = 'top'
+
+  let y = padding
+  for (const line of pages[pageIndex]) {
+    ctxVal.fillText(line, padding, y)
+    y += lineHeight.value
+  }
+}
+
+// 响应窗口变化
+function onResize() {
+  initCanvas()
+  refreshMaxPage()
+}
+
+const drop = (e: DragEvent) => {
+  dropActive.value = false
+  e.stopPropagation()
+  e.preventDefault()
+  if (e.dataTransfer?.files) {
+    resolveFile(e.dataTransfer.files)
+  }
+}
+const dragleave = (e: DragEvent) => {
+  e.stopPropagation()
+  e.preventDefault()
+  dropActive.value = false
+}
+const dragenter = (e: DragEvent) => {
+  e.stopPropagation()
+  e.preventDefault()
+  dropActive.value = true
+}
+const dragover = (e: DragEvent) => {
+  e.stopPropagation()
+  e.preventDefault()
+  dropActive.value = true
+}
+
+// 键盘事件处理
+function onKeyDown(e: KeyboardEvent) {
+  if (currentBook.value) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      store.prevPage()
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      store.nextPage()
+    } else if (e.key === 'c') {
+      store.switchShowChapters()
+    } else if (e.key === 'z') {
+      store.switchShowBookmarks()
+    } else if (e.key === 's') {
+      store.switchSettings()
+    } else if (e.key === 't') {
+      store.switchShowMenu()
+    } else if (e.key === 'q') {
+      store.switchColumnMode()
+    } else if (e.key === 'a') {
+      store.addBookmark()
+    } else if (e.key === 'b') {
+      store.backToBookshelf()
+    }
+  }
+}
+
+// 点击事件处理
+function onClick(e: MouseEvent) {
+  if (store.showChapters) {
+    store.switchShowChapters()
+  }
+  if (store.showBookmarks) {
+    store.switchShowBookmarks()
+  }
+  if (store.showSettings) {
+    store.switchSettings()
+  }
+  const unitWidth = window.innerWidth / 3
+  if (e.clientX < unitWidth) {
+    store.prevPage()
+  } else if (e.clientX < unitWidth * 2) {
+    store.switchShowMenu()
+  } else {
+    store.nextPage()
+  }
+}
+
+const onChapterChange = (e: number) => {
+  store.page = 0
+  store.currentChapterIndex = e
+  console.log(currentChapter)
+}
+
+// 监听窗口变化
+window.addEventListener('resize', onResize)
+window.addEventListener('keydown', onKeyDown)
+window.addEventListener('click', onClick)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('click', onClick)
+})
 
 const resolveFile = (files?: FileList) => {
   if (files && files.length > 0) {
@@ -157,150 +315,6 @@ const resolveFile = (files?: FileList) => {
     fr.readAsArrayBuffer(txt)
   }
 }
-const drop = (e: DragEvent) => {
-  dropActive.value = false
-  e.stopPropagation()
-  e.preventDefault()
-  if (e.dataTransfer?.files) {
-    resolveFile(e.dataTransfer.files)
-  }
-}
-const dragleave = (e: DragEvent) => {
-  e.stopPropagation()
-  e.preventDefault()
-  dropActive.value = false
-}
-const dragenter = (e: DragEvent) => {
-  e.stopPropagation()
-  e.preventDefault()
-  dropActive.value = true
-}
-const dragover = (e: DragEvent) => {
-  e.stopPropagation()
-  e.preventDefault()
-  dropActive.value = true
-}
-
-const onKeyDown = (e: KeyboardEvent) => {
-  if (currentBook.value) {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      store.prevPage()
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      store.nextPage()
-    } else if (e.key === 'c') {
-      store.switchShowChapters()
-    } else if (e.key === 'z') {
-      store.switchShowBookmarks()
-    } else if (e.key === 's') {
-      store.switchSettings()
-    } else if (e.key === 't') {
-      store.switchShowMenu()
-    } else if (e.key === 'q') {
-      store.switchColumnMode()
-    } else if (e.key === 'a') {
-      store.addBookmark()
-    } else if (e.key === 'b') {
-      store.backToBookshelf()
-    }
-  }
-}
-
-const onWheel = (e: WheelEvent) => {
-  if ((e.target as HTMLElement) !== contentElement.value) {
-    return
-  }
-  if (e.deltaY > 0) {
-    store.nextPage()
-  } else if (e.deltaY < 0) {
-    store.prevPage()
-  }
-}
-
-let doit: number
-
-function onResize() {
-  return nextTick(() => {
-    clearTimeout(doit)
-    doit = setTimeout(refreshMaxPage, 1000)
-  })
-}
-
-const onClick = (e: MouseEvent) => {
-  if (store.showChapters) {
-    store.switchShowChapters()
-  }
-  if (store.showBookmarks) {
-    store.switchShowBookmarks()
-  }
-  if (store.showSettings) {
-    store.switchSettings()
-  }
-  const pageWidth = window.innerWidth
-  if (e.clientY && e.clientX) {
-    const unitWidth = pageWidth / 3
-    if (e.clientX < unitWidth) {
-      store.prevPage()
-    } else if (e.clientX < unitWidth * 2) {
-      store.switchShowMenu()
-    } else {
-      store.nextPage()
-    }
-  }
-}
-
-const onChapterChange = (e: number) => {
-  store.page = 0
-  store.currentChapterIndex = e
-}
-
-watch(() => store.singleColumnMode, () => {
-  refreshMaxPage()
-})
-
-// compute chapters max page when book change
-watch(() => store.currentTxt, async () => {
-  refreshMaxPage()
-})
-
-
-window.addEventListener('keydown', onKeyDown)
-window.addEventListener('wheel', onWheel)
-window.addEventListener('resize', onResize)
-window.addEventListener('click', onClick)
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('wheel', onWheel)
-  window.removeEventListener('resize', onResize)
-  window.removeEventListener('click', onClick)
-})
-
-const computingChapterIndex = ref(0)
-const computingChapter = computed<IChapter>(() => currentBook.value!.chapters[computingChapterIndex.value])
-const hiddenContentRef = ref<HTMLElement>()
-const computingContent = computed(() => {
-  return computingChapter.value?.contents || []
-})
-const computingPage = ref(false)
-const setChapterPages = async () => {
-  await nextTick(() => {
-    if (hiddenContentRef.value?.scrollWidth && hiddenContentRef.value?.clientWidth) {
-      const pageWidth = hiddenContentRef.value.clientWidth + columnGap.value
-      const page = (hiddenContentRef.value.scrollWidth + columnGap.value) / pageWidth
-      computingChapter.value!.maxPage = Math.ceil(page) - 1
-    }
-  })
-}
-const showContent = ref(true)
-watch(() => store.currentChapterIndex,
-  async () => {
-    // 隐藏 contentElement 一帧
-    showContent.value = false
-
-    await nextTick()
-
-    // 下一帧恢复显示（或你可以执行其他操作）
-    showContent.value = true
-  })
 </script>
 
 <template>
@@ -313,26 +327,19 @@ watch(() => store.currentChapterIndex,
     @drop="drop"
   >
     <div v-if="currentBook && computingPage" class="computing">正在计算页数{{ computingChapterIndex + 1 }}/ {{ currentBook.chapters.length }}</div>
+
+    <canvas v-if="currentBook" ref="canvasElement"></canvas>
     <Chapter @chapter-change="onChapterChange" />
     <Bookmark />
     <template v-if="!currentBook">
       <Bookshelf @upload="resolveFile($event)" />
-    </template>
-    <template v-else>
-      <div ref="contentElement" :style="contentStyle" class="content">
-        <h2 v-if="currentChapter[0]">{{ currentChapter[0] }}</h2>
-        {{ currentChapter.slice(1, currentChapter.length).join('\n') }}
-      </div>
-      <div v-if="computingPage && computingContent.length > 0" ref="hiddenContentRef" :style="contentStyle" class="hidden-content">
-        <h2 v-if="computingContent[0]">{{ computingContent[0] }}</h2>
-        {{ computingContent.slice(1, computingContent.length).join('\n') }}
-      </div>
     </template>
     <PageIndicator />
     <ToolBar />
     <Settings />
   </main>
 </template>
+
 <style lang="scss">
 .computing {
   background-color: rgba(0, 0, 0, .7);
@@ -351,7 +358,6 @@ watch(() => store.currentChapterIndex,
 $page-indicator: 50px;
 
 #main {
-  //display: flex; //align-items: center; //justify-content: center;
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -376,22 +382,10 @@ $page-indicator: 50px;
   background: var(--color-border);
 }
 
-.content {
-  white-space: pre-wrap;
-  word-break: break-all;
-  width: auto;
+canvas {
+  width: 100%;
   height: calc(100% - $page-indicator);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-.hidden-content {
-  visibility: hidden;
-  white-space: pre-wrap;
-  word-break: break-all;
-  width: auto;
-  height: calc(100% - $page-indicator);
+  display: block;
+  //background-color: #fff;
 }
 </style>
