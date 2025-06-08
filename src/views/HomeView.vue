@@ -12,7 +12,6 @@ import { dbPromise } from '@/db'
 import { useCanvasRenderer } from '@/composables/useCanvasRenderer'
 import { usePageSplitter } from '@/composables/usePageSplitter'
 import { usePageDrawer } from '@/composables/usePageDrawer'
-import { usePageAnimation } from '@/composables/usePageAnimation'
 
 const dropActive = ref(false)
 
@@ -44,16 +43,6 @@ const { pages, splitTextToPages } = usePageSplitter(currentChapter, canvasWidth,
 
 // 绘制
 const { drawPage } = usePageDrawer(ctx, canvasWidth, canvasHeight, fontSize, lineHeight, pages)
-const {
-  isAnimating,
-  animationProgress,
-  animate,
-  animationDirection
-} = usePageAnimation(
-  drawPage,
-  computed(() => Math.ceil(pages.value.length / (store.singleColumnMode ? 1 : 2))),
-  computed(() => store.page)
-)
 
 // 切换章节时重新绘制
 watch(currentChapter, () => {
