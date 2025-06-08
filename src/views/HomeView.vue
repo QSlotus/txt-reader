@@ -9,28 +9,12 @@ import Bookshelf from '@/components/Bookshelf.vue'
 import PageIndicator from '@/components/PageIndicator.vue'
 import { dbPromise } from '@/db'
 
+import { useCanvasRenderer } from '@/composables/useCanvasRenderer'
+import { usePageSplitter } from '@/composables/usePageSplitter'
+import { usePageDrawer } from '@/composables/usePageDrawer'
+import { usePageAnimation } from '@/composables/usePageAnimation'
+
 const dropActive = ref(false)
-const columnGap = ref(30)
-
-const canvasElement = ref<HTMLCanvasElement>()
-const ctx = ref<CanvasRenderingContext2D | null>()
-const canvasWidth = ref(0)
-const canvasHeight = ref(0)
-const fontSize = computed(() => store.settings.fontSize)
-const lineHeight = computed(() => store.settings.lineHeight)
-const padding = 30 // 页面内边距
-let pages: string[][] = [] // 分好页的章节内容
-
-function initCanvas() {
-  const el = canvasElement.value
-  if (!el) return
-  const devicePixelRatio = window.devicePixelRatio || 1
-  canvasWidth.value = el.clientWidth * devicePixelRatio
-  canvasHeight.value = el.clientHeight * devicePixelRatio
-  el.width = canvasWidth.value
-  el.height = canvasHeight.value
-  ctx.value = el.getContext('2d')
-}
 
 async function init() {
   const db = await dbPromise
@@ -47,117 +31,101 @@ async function init() {
 }
 
 init()
-watch(() => currentBook.value, async (newVal) => {
-  await nextTick()
-  initCanvas()
-  console.log('change book:', newVal, ctx)
-  await refreshMaxPage(newVal)
-  pages = splitTextToPages(currentChapter.value)
+
+const canvasElement = ref<HTMLCanvasElement>()
+const fontSize = computed(() => store.settings.fontSize)
+const lineHeight = computed(() => store.settings.lineHeight)
+
+// 初始化 Canvas
+const { ctx, canvasWidth, canvasHeight, initCanvas } = useCanvasRenderer(canvasElement)
+
+// 分页
+const { pages, splitTextToPages } = usePageSplitter(currentChapter, canvasWidth, canvasHeight, fontSize, lineHeight)
+
+// 绘制
+const { drawPage } = usePageDrawer(ctx, canvasWidth, canvasHeight, fontSize, lineHeight, pages)
+const {
+  isAnimating,
+  animationProgress,
+  animate,
+  animationDirection
+} = usePageAnimation(
+  drawPage,
+  computed(() => Math.ceil(pages.value.length / (store.singleColumnMode ? 1 : 2))),
+  computed(() => store.page)
+)
+
+// 切换章节时重新绘制
+watch(currentChapter, () => {
   drawPage(store.page)
 })
-watch(() => currentChapter.value, () => {
-  pages = splitTextToPages(currentChapter.value)
-  drawPage(store.page)
+
+// 切换设置时刷新
+watch(() => store.settings, async() => {
+  await refreshMaxPage()
 })
+
+// 切换双列模式时刷新
+watch(() => store.singleColumnMode,async () => {
+  await refreshMaxPage()
+})
+
+// 翻页
 watch(() => store.page, (newPage) => {
   drawPage(newPage)
+})
+
+
+watch(currentBook, async () => {
+  await refreshMaxPage()
 })
 
 const computingChapterIndex = ref(0)
 const computingPage = ref(false)
 
 /**
- * 重置最大页数，在页面发生变化时使用
+ * 重置最大页数，在页面发生变化时使用（更换章节/字体变更/列数变更）
  */
-async function refreshMaxPage(book: IBook | undefined) {
+async function refreshMaxPage(book: IBook | undefined = undefined) {
+  await nextTick()
+  initCanvas()
   book = book || currentBook.value
   computingPage.value = true
   if (!book) return
   for (let i = 0; i < (book && book.chapters.length); i++) {
     await nextTick()
-    await (new Promise(resolve => setTimeout(resolve, 1)))
+    await (new Promise(resolve => setTimeout(resolve)))
     computingChapterIndex.value = i
     const tmpPages = splitTextToPages(book!.chapters[i].contents)
-    console.log('tmpPages:', tmpPages)
-    book!.chapters[i].maxPage = tmpPages.length - 1
+    book!.chapters[i].maxPage = store.singleColumnMode ? tmpPages.length - 1 : Math.ceil(tmpPages.length / 2) - 1
   }
-  console.log(book.chapters)
   computingPage.value = false
   store.maxPage = currentChapterTitle.value.maxPage || 0
   if (store.page > store.maxPage) {
     store.page = store.maxPage
   }
+  drawPage(store.page)
 }
 
-function splitTextToPages(textLines: string[]): string[][] {
-  const linesPerPage: string[] = []
-  const result: string[][] = []
-  let heightUsed = padding
-
-  const ctxCtx = ctx.value
-  if (!ctxCtx) return []
-
-  ctxCtx.font = `${fontSize.value}px sans-serif`
-  ctxCtx.textBaseline = 'top'
-
-  for (const line of textLines) {
-    const words = line.split('')
-    let currentLine = ''
-    for (const word of words) {
-      const testLine = currentLine + word
-      const { width } = ctxCtx.measureText(testLine)
-      if (width > canvasWidth.value - padding * 2 && currentLine !== '') {
-        linesPerPage.push(currentLine)
-        heightUsed += lineHeight.value
-        currentLine = word
-      } else {
-        currentLine = testLine
-      }
-    }
-    if (currentLine) {
-      linesPerPage.push(currentLine)
-      heightUsed += lineHeight.value
-    }
-
-    if (heightUsed >= canvasHeight.value - padding) {
-      result.push([...linesPerPage])
-      linesPerPage.length = 0
-      heightUsed = padding
-    }
-  }
-
-  if (linesPerPage.length > 0) {
-    result.push(linesPerPage)
-  }
-
-  return result
-}
-
-// 绘制当前页面内容
-function drawPage(pageIndex: number) {
-  console.log(pages, pageIndex)
-  const ctxVal = ctx.value
-  if (!ctxVal || !pages[pageIndex]) return
-
-  ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
-
-  // 设置样式
-  ctxVal.fillStyle = 'white'
-  ctxVal.font = `${fontSize.value}px sans-serif`
-  ctxVal.textBaseline = 'top'
-
-  let y = padding
-  for (const line of pages[pageIndex]) {
-    ctxVal.fillText(line, padding, y)
-    y += lineHeight.value
-  }
-}
 
 // 响应窗口变化
+let resizeTimeout: number | null = null
+
 function onResize() {
-  initCanvas()
-  refreshMaxPage()
+  if (computingPage.value) {
+    return
+  }
+  if (resizeTimeout !== null) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = window.setTimeout(() => {
+    initCanvas()
+    refreshMaxPage()
+    drawPage(store.page)
+    resizeTimeout = null
+  }, 300) // 缓冲 300ms
 }
+
 
 const drop = (e: DragEvent) => {
   dropActive.value = false
@@ -327,7 +295,6 @@ const resolveFile = (files?: FileList) => {
     @drop="drop"
   >
     <div v-if="currentBook && computingPage" class="computing">正在计算页数{{ computingChapterIndex + 1 }}/ {{ currentBook.chapters.length }}</div>
-
     <canvas v-if="currentBook" ref="canvasElement"></canvas>
     <Chapter @chapter-change="onChapterChange" />
     <Bookmark />
@@ -341,6 +308,8 @@ const resolveFile = (files?: FileList) => {
 </template>
 
 <style lang="scss">
+$page-indicator: 50px;
+
 .computing {
   background-color: rgba(0, 0, 0, .7);
   color: #fff;
@@ -355,7 +324,6 @@ const resolveFile = (files?: FileList) => {
   top: 0;
 }
 
-$page-indicator: 50px;
 
 #main {
   width: 100%;
