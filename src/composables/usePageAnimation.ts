@@ -33,7 +33,7 @@ export function usePageAnimation(
     const nextPageIndex = pageIndex
     cachedChapter.value = store.currentChapterIndex
 
-    const duration = 300 // 动画持续时间（ms）
+    const duration = 100 // 动画持续时间（ms）
 
     const startTime = performance.now()
 

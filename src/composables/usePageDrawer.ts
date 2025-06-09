@@ -21,32 +21,28 @@ export function usePageDrawer(
   const padding = 30
   const pages = computed(() => store.chapters[store.currentChapterIndex].splitPages!)
 
-function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offsetX: number) {
-  if (!page.length) return
+  function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offsetX: number, isChapterFirstPage: boolean = false) {
+    if (!page.length) return
 
-  let y = padding
+    let y = padding
 
-  // 如果是章节第一页，则第一行为标题
-  const isChapterFirstPage = store.page === 0 && store.currentChapterIndex >= 0
-  const chapterTitle = store.chapters[store.currentChapterIndex]?.title
+    for (let i = 0; i < page.length; i++) {
+      const line = page[i]
 
-  for (let i = 0; i < page.length; i++) {
-    const line = page[i]
+      if (i === 0 && isChapterFirstPage) {
+        // 第一行且是章节标题，加粗显示
+        ctxVal.font = `bold ${fontSize.value * 1.2}px sans-serif`
+        ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
+        ctxVal.fillText(line, padding + offsetX, y)
+        ctxVal.font = `${fontSize.value}px sans-serif` // 恢复正常字体
+        ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
+      } else {
+        ctxVal.fillText(line, padding + offsetX, y)
+      }
 
-    if (i === 0 && isChapterFirstPage && line === chapterTitle) {
-      // 第一行且是章节标题，加粗显示
-      ctxVal.font = `bold ${fontSize.value * 1.2}px sans-serif`
-      ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
-      ctxVal.fillText(line, padding + offsetX, y)
-      ctxVal.font = `${fontSize.value}px sans-serif` // 恢复正常字体
-      ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
-    } else {
-      ctxVal.fillText(line, padding + offsetX, y)
+      y += lineHeight.value
     }
-
-    y += lineHeight.value
   }
-}
 
   function drawFullPage(pageIndex: number) {
     const ctxVal = ctx.value
@@ -72,14 +68,14 @@ function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offset
       const rightPageIndex = leftPageIndex + 1
 
       if (pages.value[leftPageIndex]) {
-        drawSinglePage(ctxVal, pages.value[leftPageIndex], 0)
+        drawSinglePage(ctxVal, pages.value[leftPageIndex], 0, pageIndex === 0)
       }
 
       if (pages.value[rightPageIndex]) {
         drawSinglePage(ctxVal, pages.value[rightPageIndex], canvasWidth.value / 2)
       }
     } else {
-      drawSinglePage(ctxVal, pages.value[pageIndex], 0)
+      drawSinglePage(ctxVal, pages.value[pageIndex], 0, pageIndex === 0)
     }
     console.log('drawPage:', pageIndex, store.singleColumnMode)
   }
@@ -111,14 +107,14 @@ function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offset
       const rightPageIndex = leftPageIndex + 1
 
       if (drawingPages[leftPageIndex]) {
-        drawSinglePage(tempCtx, drawingPages[leftPageIndex], 0)
+        drawSinglePage(tempCtx, drawingPages[leftPageIndex], 0, pageIndex === 0)
       }
 
       if (drawingPages[rightPageIndex]) {
         drawSinglePage(tempCtx, drawingPages[rightPageIndex], canvasWidth.value / 2)
       }
     } else {
-      drawSinglePage(tempCtx, drawingPages[pageIndex], 0)
+      drawSinglePage(tempCtx, drawingPages[pageIndex], 0, pageIndex === 0)
     }
 
     ctx.save()

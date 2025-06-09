@@ -1,8 +1,20 @@
 <script lang="ts" setup>
 import { store } from '@/store.js'
+import { onMounted, watch } from 'vue'
+
+let hiddenTimer: number | null = null
+watch(() => store.showMenu, (newVal) => {
+  if (newVal) {
+    hiddenTimer && clearTimeout(hiddenTimer)
+    hiddenTimer = setTimeout(() => {
+      store.showMenu = false
+    }, 3000)
+  }
+})
+
 </script>
 <template>
-  <div class="toolbar" :class="{ show: store.showMenu }">
+  <div :class="{ show: store.showMenu }" class="toolbar">
     <button class="btn" @click.stop="store.switchShowChapters()">打开目录(c)</button>
     <button class="btn" @click.stop="store.switchColumnMode()">{{ store.singleColumnMode ? '双列模式' : '单列模式' }}(q)</button>
     <button class="btn" @click.stop="store.switchShowBookmarks()">打开书签(z)</button>
@@ -40,9 +52,10 @@ $page-indicator: 50px;
   padding: 20px;
   background-color: var(--color-background-soft);
   width: 100%;
+
   &.show {
     transform: translateX(0%);
-    box-shadow: 0 -5px 5px rgba(0,0,0,.3);
+    box-shadow: 0 -5px 5px rgba(0, 0, 0, .3);
   }
 
   .btn {

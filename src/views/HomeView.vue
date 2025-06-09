@@ -65,7 +65,7 @@ watch(() => ({
 // 切换设置时刷新
 watch(() => store.settings, async () => {
   await refreshMaxPage()
-})
+}, { deep: true })
 
 // 切换双列模式时刷新
 watch(() => store.singleColumnMode, async () => {
@@ -179,6 +179,19 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
+
+const onWheel = (e: WheelEvent) => {
+  if ((e.target as HTMLElement) !== canvasElement.value) {
+    return
+  }
+  if (e.deltaY > 0) {
+    store.nextPage()
+  } else if (e.deltaY < 0) {
+    store.prevPage()
+  }
+}
+
+
 // 点击事件处理
 function onClick(e: MouseEvent) {
   if (store.showChapters) {
@@ -207,15 +220,17 @@ const onChapterChange = (e: number) => {
 }
 
 // 监听窗口变化
-window.addEventListener('resize', onResize)
 window.addEventListener('keydown', onKeyDown)
+window.addEventListener('wheel', onWheel)
+window.addEventListener('resize', onResize)
 window.addEventListener('click', onClick)
-
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', onResize)
   window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('wheel', onWheel)
+  window.removeEventListener('resize', onResize)
   window.removeEventListener('click', onClick)
 })
+
 
 const resolveFile = (files?: FileList) => {
   if (files && files.length > 0) {
