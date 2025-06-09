@@ -12,6 +12,7 @@ import { dbPromise } from '@/db'
 import { useCanvasRenderer } from '@/composables/useCanvasRenderer'
 import { usePageSplitter } from '@/composables/usePageSplitter'
 import { usePageDrawer } from '@/composables/usePageDrawer'
+import { usePageAnimation } from '@/composables/usePageAnimation'
 
 const dropActive = ref(false)
 
@@ -42,20 +43,32 @@ const { ctx, canvasWidth, canvasHeight, initCanvas } = useCanvasRenderer(canvasE
 const { pages, splitTextToPages } = usePageSplitter(currentChapter, canvasWidth, canvasHeight, fontSize, lineHeight)
 
 // 绘制
-const { drawPage } = usePageDrawer(ctx, canvasWidth, canvasHeight, fontSize, lineHeight, pages)
+const { drawPage, drawCachedPage } = usePageDrawer(ctx, canvasWidth, canvasHeight, fontSize, lineHeight)
 
-// 切换章节时重新绘制
-watch(currentChapter, () => {
-  drawPage(store.page)
+
+const { animate } = usePageAnimation(drawPage, drawCachedPage)
+
+watch(() => ({
+  page: store.page,
+  chapterIndex: store.currentChapterIndex
+}), (newPage, oldPage) => {
+  if (oldPage === undefined) return
+  animate(oldPage.page, newPage.page)
+  // console.log(store.chapters[newPage.chapterIndex].splitPages!)
 })
 
+// 切换章节时重新绘制
+// watch(currentChapter, () => {
+//   drawPage(store.page)
+// })
+
 // 切换设置时刷新
-watch(() => store.settings, async() => {
+watch(() => store.settings, async () => {
   await refreshMaxPage()
 })
 
 // 切换双列模式时刷新
-watch(() => store.singleColumnMode,async () => {
+watch(() => store.singleColumnMode, async () => {
   await refreshMaxPage()
 })
 
@@ -87,6 +100,7 @@ async function refreshMaxPage(book: IBook | undefined = undefined) {
     computingChapterIndex.value = i
     const tmpPages = splitTextToPages(book!.chapters[i].contents)
     book!.chapters[i].maxPage = store.singleColumnMode ? tmpPages.length - 1 : Math.ceil(tmpPages.length / 2) - 1
+    book!.chapters[i].splitPages = tmpPages
   }
   computingPage.value = false
   store.maxPage = currentChapterTitle.value.maxPage || 0
@@ -312,7 +326,6 @@ $page-indicator: 50px;
   left: 0;
   top: 0;
 }
-
 
 #main {
   width: 100%;
