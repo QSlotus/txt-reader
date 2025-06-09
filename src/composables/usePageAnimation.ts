@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { store } from '@/store'
 
@@ -33,14 +33,17 @@ export function usePageAnimation(
     const nextPageIndex = pageIndex
     cachedChapter.value = store.currentChapterIndex
 
-    const duration = 100 // 动画持续时间（ms）
+    const duration = 300 // 动画持续时间（ms）
 
     const startTime = performance.now()
 
     function step(time: number) {
       const elapsed = time - startTime
       const progress = Math.min(elapsed / duration, 1)
-      animationProgress.value = progress
+
+      // 使用 ease-in-out 缓动函数
+      const easedProgress = easeInOut(progress)
+      animationProgress.value = easedProgress
 
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
@@ -52,12 +55,12 @@ export function usePageAnimation(
       // 绘制当前页和目标页
       if (direction === 'right') {
         // 向右滑动：当前页向左移出，下一页从右侧进入
-        drawCachedPage(ctx, prevPageChapterIndex, prevPageIndex, -progress * canvas.width)
-        drawCachedPage(ctx, nextPageChapterIndex, nextPageIndex, (1 - progress) * canvas.width)
+        drawCachedPage(ctx, prevPageChapterIndex, prevPageIndex, -easedProgress * canvas.width)
+        drawCachedPage(ctx, nextPageChapterIndex, nextPageIndex, (1 - easedProgress) * canvas.width)
       } else {
         // 向左滑动：当前页向右移出，上一页从左侧进入
-        drawCachedPage(ctx, prevPageChapterIndex, prevPageIndex, progress * canvas.width)
-        drawCachedPage(ctx, nextPageChapterIndex, nextPageIndex, -(1 - progress) * canvas.width)
+        drawCachedPage(ctx, prevPageChapterIndex, prevPageIndex, easedProgress * canvas.width)
+        drawCachedPage(ctx, nextPageChapterIndex, nextPageIndex, -(1 - easedProgress) * canvas.width)
       }
 
       // 将缓存绘制到主 Canvas
@@ -73,7 +76,7 @@ export function usePageAnimation(
       if (progress < 1) {
         requestAnimationFrame(step)
       } else {
-        drawPage(nextPageIndex) // 动画结束后重绘最终页
+        drawPage(pageIndex)
         isAnimating.value = false
         animationProgress.value = 0
       }
@@ -87,4 +90,9 @@ export function usePageAnimation(
     animationProgress,
     animate
   }
+}
+
+// Ease-in-out 缓动函数（类似 CSS cubic-bezier(0.4, 0.0, 0.2, 1)）
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
 }
