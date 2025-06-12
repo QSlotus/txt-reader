@@ -4,7 +4,7 @@ interface IWatchHistory {
 }
 
 interface IChapter {
-  splitPages?: string[][]
+  splitPages?: readonly string[][]
   title: string
   contents: string[]
   maxPage?: number

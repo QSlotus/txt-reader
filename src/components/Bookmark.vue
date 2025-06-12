@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { store, currentBookMarks } from '@/store'
+import { store, currentBookMarks, currentPage } from '@/store'
 
 const go = (bookmark: IWatchHistory) => {
-  store.page = bookmark.page
+  currentPage.value = bookmark.page
   store.currentChapterIndex = bookmark.chapterIndex
 }
 </script>

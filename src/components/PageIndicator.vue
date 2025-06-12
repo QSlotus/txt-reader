@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { store, currentChapterTitle, currentBook } from '@/store'
+import { store, currentChapterTitle, currentBook, currentPage } from '@/store'
 
 const onPageInput = (e: Event) => {
   let targetPage = Number((e.target as HTMLInputElement).value) - 1
   if (Number.isNaN(targetPage)) {
-    targetPage = store.page
+    targetPage = currentPage.value
   }
   // console.log(e)
   if (targetPage > store.maxPage) {
     targetPage = store.maxPage
   }
 
-  store.page = targetPage
+  currentPage.value = targetPage
 }
 </script>
 <template>

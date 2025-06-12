@@ -19,8 +19,9 @@ export function usePageDrawer(
   lineHeight: Ref<number>
 ) {
   const padding = 30
-  const pages = computed(() => store.chapters[store.currentChapterIndex].splitPages!)
-
+  const pages = computed(() => store.chapters[store.currentChapterIndex]?.splitPages)
+  const tempCanvas = document.createElement('canvas')
+  const tempCtx = tempCanvas.getContext('2d')
   function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offsetX: number, isChapterFirstPage: boolean = false) {
     if (!page.length) return
 
@@ -46,7 +47,7 @@ export function usePageDrawer(
 
   function drawFullPage(pageIndex: number) {
     const ctxVal = ctx.value
-    if (!ctxVal) return
+    if (!ctxVal || !pages.value) return
 
     ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 
@@ -80,9 +81,7 @@ export function usePageDrawer(
     console.log('drawPage:', pageIndex, store.singleColumnMode)
   }
 
-  function drawCachedPage(ctx: CanvasRenderingContext2D, chapterIndex: number, pageIndex: number, offsetX: number) {
-    const tempCanvas = document.createElement('canvas')
-    const tempCtx = tempCanvas.getContext('2d')
+  function drawCachedPage(ctx: CanvasRenderingContext2D, drawingPages: readonly string[][], pageIndex: number, offsetX: number) {
     if (!tempCtx) return
     // 获取当前主题颜色
     const currentTheme = store.settings.theme as keyof typeof themeColors
@@ -100,8 +99,10 @@ export function usePageDrawer(
     tempCtx.font = `${fontSize.value}px sans-serif`
     tempCtx.textBaseline = 'top'
 
-    let drawingPages = chapterIndex === store.currentChapterIndex ? pages.value : store.chapters[chapterIndex].splitPages!
-
+    // let drawingPages = chapterIndex === store.currentChapterIndex ? pages.value : store.chapters[chapterIndex].splitPages!
+    if (!drawingPages) {
+      return
+    }
     if (!store.singleColumnMode) {
       const leftPageIndex = pageIndex * 2
       const rightPageIndex = leftPageIndex + 1

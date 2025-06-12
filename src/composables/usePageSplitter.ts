@@ -2,6 +2,7 @@ import { computed, ref, watchEffect } from 'vue'
 import type { Ref } from 'vue'
 import { store } from '@/store'
 
+
 /**
  * 使用分页拆分文本的自定义钩子
  *
@@ -19,6 +20,7 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
   const padding = 30
   // 分页结果的响应式引用，每个页面是一个字符串数组
   const pages = ref<string[][]>([])
+  const ctx = document.createElement('canvas').getContext('2d')
 
   /**
    * 将文本行拆分成多个页面
@@ -36,7 +38,6 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
     let heightUsed = padding
 
     // 创建一个临时画布上下文用于测量文本宽度
-    const ctx = document.createElement('canvas').getContext('2d')
     if (!ctx) return []
 
     // 设置画布上下文的字体和文本基线

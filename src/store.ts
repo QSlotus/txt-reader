@@ -18,6 +18,7 @@ type StoreType = {
   bookmarks: IBookmark[];
   settings: { [key: string]: any };
   showSettings: boolean;
+  isAnimating: boolean;
 
   // methods
   switchShowChapters(): void;
@@ -69,12 +70,14 @@ try {
   settings = JSON.parse(localStorage.getItem('settings') || '{}')
 } catch (e) {
 }
+
 const defaultState: StoreType = {
   showChapters: false,
   showBookmarks: false,
   showSettings: false,
   singleColumnMode: !!getStorage('singleColumnMode'),
   showMenu: false,
+  isAnimating: false,
   // txtContent: [],
   chapters: [],
   currentChapterIndex: 0,
@@ -132,6 +135,7 @@ const defaultState: StoreType = {
     this.showChapters = false
     this.showMenu = false
     this.showSettings = false
+    this.isAnimating = false
   },
   addToBookshelf() {
     const index = this.bookshelf.findIndex(i => i.title === this.currentTxt)
@@ -178,28 +182,30 @@ const defaultState: StoreType = {
     this.currentTxt = book.title
     // this.txtContent = book.contents
     this.chapters = book.chapters
-    this.page = book.history.page
+    currentPage.value = book.history.page
     this.currentChapterIndex = book.history.chapterIndex
   },
   prevPage() {
-    if (store.page > 0) {
-      store.page = store.page - 1
+    if (store.isAnimating) return
+    if (currentPage.value > 0) {
+      currentPage.value = currentPage.value - 1
     } else if (store.currentChapterIndex > 0) {
       store.currentChapterIndex -= 1
-      store.page = currentChapterTitle.value.maxPage || 0
+      currentPage.value = currentChapterTitle.value.maxPage || 0
     }
   },
   nextPage() {
-    if (store.page < store.maxPage) {
-      store.page = store.page + 1
+    if (store.isAnimating) return
+    if (currentPage.value < store.maxPage) {
+      currentPage.value = currentPage.value + 1
     } else if (store.currentChapterIndex < store.chapters.length - 1) {
-      store.page = 0
+      currentPage.value = 0
       store.currentChapterIndex += 1
     }
   },
   async storeHistory() {
     if (store.currentTxt && currentBook && currentBook.value?.history) {
-      currentBook.value.history = { page: store.page, chapterIndex: store.currentChapterIndex }
+      currentBook.value.history = { page: currentPage.value, chapterIndex: store.currentChapterIndex }
       const book = Object.assign({}, currentBook.value)
       const db = await dbPromise
       await db.put('bookshelf', {
@@ -212,19 +218,30 @@ const defaultState: StoreType = {
   },
   nextChapter() {
     if (this.currentChapterIndex < this.chapters.length - 1) {
-      this.page = 0
+      currentPage.value = 0
       this.currentChapterIndex++
     }
   },
   prevChapter() {
     if (this.currentChapterIndex > 0) {
-      this.page = 0
+      currentPage.value = 0
       this.currentChapterIndex--
     }
   }
 }
 
 export const store = reactive<StoreType>(defaultState)
+
+export const currentPage = computed({
+  get() {
+    return store.page
+  },
+  set(val: number) {
+    if (store.isAnimating) return
+    store.page = val
+  }
+})
+
 
 export const currentChapterTitle = computed(() => {
   return store.chapters[store.currentChapterIndex]
@@ -249,6 +266,6 @@ watch(() => store.currentChapterIndex, () => {
   store.storeHistory()
 })
 
-watch(() => store.page, () => {
+watch(currentPage, () => {
   store.storeHistory()
 })

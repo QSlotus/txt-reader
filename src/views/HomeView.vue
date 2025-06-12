@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { currentBook, currentChapter, currentChapterTitle, store } from '@/store'
+import { currentBook, currentChapter, currentChapterTitle, currentPage, store } from '@/store'
 import ToolBar from '@/components/ToolBar.vue'
 import Settings from '@/components/Settings.vue'
 import Chapter from '@/components/Chapter.vue'
@@ -22,7 +22,14 @@ async function init() {
   store.bookshelf = books.map<IBook>(i => {
     return {
       title: i.title,
-      chapters: JSON.parse(i.chapters),
+      chapters: (JSON.parse(i.chapters) as IChapter[]).map(chapter => {
+        return {
+          title: chapter.title,
+          contents: Object.freeze(chapter.contents),
+          maxPage: chapter.maxPage,
+          splitPages: chapter.splitPages
+        } as IChapter
+      }),
       // contents: JSON.parse(i.contents),
       history: JSON.parse(i.history),
       showDelete: false
@@ -40,7 +47,7 @@ const lineHeight = computed(() => store.settings.lineHeight)
 const { ctx, canvasWidth, canvasHeight, initCanvas } = useCanvasRenderer(canvasElement)
 
 // 分页
-const { pages, splitTextToPages } = usePageSplitter(currentChapter, canvasWidth, canvasHeight, fontSize, lineHeight)
+const { splitTextToPages } = usePageSplitter(currentChapter, canvasWidth, canvasHeight, fontSize, lineHeight)
 
 // 绘制
 const { drawPage, drawCachedPage } = usePageDrawer(ctx, canvasWidth, canvasHeight, fontSize, lineHeight)
@@ -49,7 +56,7 @@ const { drawPage, drawCachedPage } = usePageDrawer(ctx, canvasWidth, canvasHeigh
 const { animate } = usePageAnimation(drawPage, drawCachedPage)
 
 watch(() => ({
-  page: store.page,
+  page: currentPage.value,
   chapterIndex: store.currentChapterIndex
 }), (newPage, oldPage) => {
   if (oldPage === undefined) return
@@ -73,9 +80,9 @@ watch(() => store.singleColumnMode, async () => {
 })
 
 // 翻页
-watch(() => store.page, (newPage) => {
-  drawPage(newPage)
-})
+// watch(() => store.page, (newPage) => {
+//   drawPage(newPage)
+// })
 
 
 watch(currentBook, async () => {
@@ -98,16 +105,16 @@ async function refreshMaxPage(book: IBook | undefined = undefined) {
     await nextTick()
     await (new Promise(resolve => setTimeout(resolve)))
     computingChapterIndex.value = i
-    const tmpPages = splitTextToPages(book!.chapters[i].contents)
+    const tmpPages = Object.freeze(splitTextToPages(book!.chapters[i].contents))
     book!.chapters[i].maxPage = store.singleColumnMode ? tmpPages.length - 1 : Math.ceil(tmpPages.length / 2) - 1
     book!.chapters[i].splitPages = tmpPages
   }
   computingPage.value = false
   store.maxPage = currentChapterTitle.value.maxPage || 0
-  if (store.page > store.maxPage) {
-    store.page = store.maxPage
+  if (currentPage.value > store.maxPage) {
+    currentPage.value = store.maxPage
   }
-  drawPage(store.page)
+  drawPage(currentPage.value)
 }
 
 
@@ -124,7 +131,7 @@ function onResize() {
   resizeTimeout = window.setTimeout(() => {
     initCanvas()
     refreshMaxPage()
-    drawPage(store.page)
+    drawPage(currentPage.value)
     resizeTimeout = null
   }, 300) // 缓冲 300ms
 }
@@ -214,7 +221,7 @@ function onClick(e: MouseEvent) {
 }
 
 const onChapterChange = (e: number) => {
-  store.page = 0
+  currentPage.value = 0
   store.currentChapterIndex = e
   console.log(currentChapter)
 }
