@@ -2,9 +2,16 @@ import { computed, watchEffect } from 'vue'
 import type { Ref } from 'vue'
 import { store } from '@/store'
 
+function getSystemTheme(): 'light' | 'dark' {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 // 主题配色
 export const themeColors = {
-  'default': { background: '#ffffff', text: '#181818' },
+  'default': () => {
+    const systemTheme = getSystemTheme()
+    return systemTheme === 'dark' ? themeColors['theme-dark'] : themeColors['theme-light']
+  },
   'theme-dark': { background: '#181818', text: '#f8f8f8' },
   'theme-light': { background: '#ffffff', text: '#181818' },
   'theme-book': { background: 'rgb(241, 229, 201)', text: '#000000' },
@@ -22,10 +29,17 @@ export function usePageDrawer(
   const pages = computed(() => store.chapters[store.currentChapterIndex]?.splitPages)
   const tempCanvas = document.createElement('canvas')
   const tempCtx = tempCanvas.getContext('2d')
+
   function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offsetX: number, isChapterFirstPage: boolean = false) {
-    if (!page.length) return
+    if (!page?.length) return
 
     let y = padding
+
+    const currentTheme = store.settings.theme as keyof typeof themeColors
+    let colors = themeColors[currentTheme]
+    if (typeof colors === 'function') {
+      colors = colors()
+    }
 
     for (let i = 0; i < page.length; i++) {
       const line = page[i]
@@ -33,10 +47,10 @@ export function usePageDrawer(
       if (i === 0 && isChapterFirstPage) {
         // 第一行且是章节标题，加粗显示
         ctxVal.font = `bold ${fontSize.value * 1.2}px sans-serif`
-        ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
+        ctxVal.fillStyle = colors.text
         ctxVal.fillText(line, padding + offsetX, y)
         ctxVal.font = `${fontSize.value}px sans-serif` // 恢复正常字体
-        ctxVal.fillStyle = themeColors[store.settings.theme as keyof typeof themeColors].text
+        ctxVal.fillStyle = colors.text
       } else {
         ctxVal.fillText(line, padding + offsetX, y)
       }
@@ -51,9 +65,11 @@ export function usePageDrawer(
 
     ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 
-    // 获取当前主题颜色
     const currentTheme = store.settings.theme as keyof typeof themeColors
-    const colors = themeColors[currentTheme] || themeColors['default']
+    let colors = themeColors[currentTheme]
+    if (typeof colors === 'function') {
+      colors = colors()
+    }
 
     // 绘制背景
     ctxVal.fillStyle = colors.background
@@ -83,9 +99,13 @@ export function usePageDrawer(
 
   function drawCachedPage(ctx: CanvasRenderingContext2D, drawingPages: readonly string[][], pageIndex: number, offsetX: number) {
     if (!tempCtx) return
-    // 获取当前主题颜色
+
+    // 获取当前主题
     const currentTheme = store.settings.theme as keyof typeof themeColors
-    const colors = themeColors[currentTheme] || themeColors['default']
+    let colors = themeColors[currentTheme]
+    if (typeof colors === 'function') {
+      colors = colors()
+    }
 
     tempCanvas.width = canvasWidth.value
     tempCanvas.height = canvasHeight.value

@@ -180,10 +180,14 @@ const defaultState: StoreType = {
   },
   read(book: IBook) {
     this.currentTxt = book.title
-    // this.txtContent = book.contents
     this.chapters = book.chapters
-    currentPage.value = book.history.page
-    this.currentChapterIndex = book.history.chapterIndex
+
+    // 优先从 localStorage 获取最新阅读位置
+    const histories = JSON.parse(localStorage.getItem('bookHistories') || '{}')
+    const savedHistory = histories[book.title]
+
+    currentPage.value = savedHistory?.page ?? book.history?.page ?? 0
+    this.currentChapterIndex = savedHistory?.chapterIndex ?? book.history?.chapterIndex ?? 0
   },
   prevPage() {
     if (store.isAnimating) return
@@ -204,16 +208,15 @@ const defaultState: StoreType = {
     }
   },
   async storeHistory() {
-    if (store.currentTxt && currentBook && currentBook.value?.history) {
-      currentBook.value.history = { page: currentPage.value, chapterIndex: store.currentChapterIndex }
-      const book = Object.assign({}, currentBook.value)
-      const db = await dbPromise
-      await db.put('bookshelf', {
-        title: book.title,
-        chapters: JSON.stringify(book.chapters),
-        // contents: JSON.stringify(book.contents),
-        history: JSON.stringify(book.history)
-      })
+    if (store.currentTxt && currentBook.value) {
+      const history = {
+        page: currentPage.value,
+        chapterIndex: store.currentChapterIndex
+      }
+      // 更新内存中的 history
+      currentBook.value.history = history
+      // 保存到 localStorage
+      saveHistoryToLocalStorage(currentBook.value.title, history)
     }
   },
   nextChapter() {
@@ -228,6 +231,12 @@ const defaultState: StoreType = {
       this.currentChapterIndex--
     }
   }
+}
+
+function saveHistoryToLocalStorage(title: string, history: { page: number; chapterIndex: number }) {
+  const histories = JSON.parse(localStorage.getItem('bookHistories') || '{}')
+  histories[title] = history
+  localStorage.setItem('bookHistories', JSON.stringify(histories))
 }
 
 export const store = reactive<StoreType>(defaultState)

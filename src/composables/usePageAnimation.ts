@@ -49,8 +49,9 @@ export function usePageAnimation(
     offscreenCanvas.width = width
     offscreenCanvas.height = height
 
-    let prevDrawingPages = store.chapters[prevPageChapterIndex].splitPages!
-    let nextDrawingPages = store.chapters[nextPageChapterIndex].splitPages!
+    let prevDrawingPages = store.chapters[prevPageChapterIndex]?.splitPages
+    let nextDrawingPages = store.chapters[nextPageChapterIndex]?.splitPages
+    if (!prevDrawingPages || !nextDrawingPages) return
     function step(time: number) {
       console.log('step')
       const elapsed = time - startTime
@@ -65,12 +66,12 @@ export function usePageAnimation(
       // 绘制当前页和目标页
       if (direction === 'right') {
         // 向右滑动：当前页向左移出，下一页从右侧进入
-        drawCachedPage(offscreenCtx!, prevDrawingPages, prevPageIndex, -easedProgress * width)
-        drawCachedPage(offscreenCtx!, nextDrawingPages, nextPageIndex, (1 - easedProgress) * width)
+        drawCachedPage(offscreenCtx!, prevDrawingPages!, prevPageIndex, -easedProgress * width)
+        drawCachedPage(offscreenCtx!, nextDrawingPages!, nextPageIndex, (1 - easedProgress) * width)
       } else {
         // 向左滑动：当前页向右移出，上一页从左侧进入
-        drawCachedPage(offscreenCtx!, prevDrawingPages, prevPageIndex, easedProgress * width)
-        drawCachedPage(offscreenCtx!, nextDrawingPages, nextPageIndex, -(1 - easedProgress) * width)
+        drawCachedPage(offscreenCtx!, prevDrawingPages!, prevPageIndex, easedProgress * width)
+        drawCachedPage(offscreenCtx!, nextDrawingPages!, nextPageIndex, -(1 - easedProgress) * width)
       }
 
       mainCtx?.clearRect(0, 0, width, height)
