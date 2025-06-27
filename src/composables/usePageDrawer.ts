@@ -31,7 +31,11 @@ export function usePageDrawer(
   const tempCtx = tempCanvas.getContext('2d')
 
   function drawSinglePage(ctxVal: CanvasRenderingContext2D, page: string[], offsetX: number, isChapterFirstPage: boolean = false) {
-    if (!page?.length) return
+    // 确保页面内容存在
+    if (!page || page.length === 0) {
+      console.warn('页面内容为空')
+      return
+    }
 
     let y = padding
 
@@ -42,7 +46,7 @@ export function usePageDrawer(
     }
 
     for (let i = 0; i < page.length; i++) {
-      const line = page[i]
+      const line = page[i] || ''; // 确保行内容存在，即使是空字符串
 
       if (i === 0 && isChapterFirstPage) {
         // 第一行且是章节标题，加粗显示
@@ -61,7 +65,41 @@ export function usePageDrawer(
 
   function drawFullPage(pageIndex: number) {
     const ctxVal = ctx.value
-    if (!ctxVal || !pages.value) return
+    if (!ctxVal) {
+      console.warn('Canvas上下文不存在')
+      return
+    }
+    
+    // 确保页面数据存在
+    if (!pages.value || pages.value.length === 0) {
+      console.warn('页面数据不存在，绘制空页面')
+      
+      // 清除画布
+      ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+      
+      // 获取当前主题
+      const currentTheme = store.settings.theme as keyof typeof themeColors
+      let colors = themeColors[currentTheme]
+      if (typeof colors === 'function') {
+        colors = colors()
+      }
+      
+      // 绘制背景
+      ctxVal.fillStyle = colors.background
+      ctxVal.fillRect(0, 0, canvasWidth.value, canvasHeight.value)
+      
+      // 设置文字样式
+      ctxVal.fillStyle = colors.text
+      ctxVal.font = `${fontSize.value}px sans-serif`
+      ctxVal.textBaseline = 'top'
+      
+      // 绘制提示文本
+      const message = '无内容可显示'
+      const textWidth = ctxVal.measureText(message).width
+      ctxVal.fillText(message, (canvasWidth.value - textWidth) / 2, canvasHeight.value / 2)
+      
+      return
+    }
 
     ctxVal.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 
@@ -80,19 +118,27 @@ export function usePageDrawer(
     ctxVal.font = `${fontSize.value}px sans-serif`
     ctxVal.textBaseline = 'top'
 
+    // 确保页面索引有效
+    if (pageIndex < 0) {
+      console.warn('页面索引无效:', pageIndex)
+      pageIndex = 0
+    }
+
     if (!store.singleColumnMode) {
       const leftPageIndex = pageIndex * 2
       const rightPageIndex = leftPageIndex + 1
 
-      if (pages.value[leftPageIndex]) {
+      if (leftPageIndex < pages.value.length && pages.value[leftPageIndex]) {
         drawSinglePage(ctxVal, pages.value[leftPageIndex], 0, pageIndex === 0)
       }
 
-      if (pages.value[rightPageIndex]) {
+      if (rightPageIndex < pages.value.length && pages.value[rightPageIndex]) {
         drawSinglePage(ctxVal, pages.value[rightPageIndex], canvasWidth.value / 2)
       }
     } else {
-      drawSinglePage(ctxVal, pages.value[pageIndex], 0, pageIndex === 0)
+      if (pageIndex < pages.value.length && pages.value[pageIndex]) {
+        drawSinglePage(ctxVal, pages.value[pageIndex], 0, pageIndex === 0)
+      }
     }
     console.log('drawPage:', pageIndex, store.singleColumnMode)
   }

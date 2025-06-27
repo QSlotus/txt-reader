@@ -29,7 +29,14 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
    * @returns 返回一个二维数组，每个子数组代表一个页面的文本行
    */
   function splitTextToPages(textLines: string[]): string[][] {
-    console.log('splitTextToPages')
+    console.log('splitTextToPages, 行数:', textLines.length)
+    
+    // 如果文本行为空，返回至少一个空页面
+    if (!textLines || textLines.length === 0) {
+      console.log('文本行为空，返回空页面')
+      return [['']]
+    }
+    
     // 存储每页的文本行
     const linesPerPage: string[] = []
     // 存储所有页面的文本行
@@ -38,7 +45,10 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
     let heightUsed = padding
 
     // 创建一个临时画布上下文用于测量文本宽度
-    if (!ctx) return []
+    if (!ctx) {
+      console.warn('无法创建画布上下文，返回默认页面')
+      return [textLines]
+    }
 
     // 设置画布上下文的字体和文本基线
     ctx.font = `${fontSize.value}px sans-serif`
@@ -46,6 +56,8 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
 
     // 计算可用宽度为 canvasWidth 的一半
     const availableWidth = store.singleColumnMode ? canvasWidth.value : canvasWidth.value / 2 - padding * 2
+    
+    console.log('可用宽度:', availableWidth, '可用高度:', canvasHeight.value - padding * 2)
 
     // 遍历每一行文本
     for (const line of textLines) {
@@ -91,6 +103,14 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
     if (linesPerPage.length > 0) {
       result.push(linesPerPage)
     }
+    
+    // 确保至少有一个页面
+    if (result.length === 0) {
+      console.log('未生成任何页面，添加默认页面')
+      result.push([''])
+    }
+    
+    console.log('分页结果:', result.length, '页')
 
     // 返回分页结果
     return result

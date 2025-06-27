@@ -125,23 +125,53 @@ const computingPage = ref(false)
  */
 async function refreshMaxPage(book: IBook | undefined = undefined) {
   await nextTick()
+  console.log('开始刷新最大页数')
   initCanvas()
   book = book || currentBook.value
   computingPage.value = true
-  if (!book) return
-  for (let i = 0; i < (book && book.chapters.length); i++) {
+  
+  if (!book) {
+    console.warn('没有书籍数据，无法计算页数')
+    computingPage.value = false
+    return
+  }
+  
+  console.log('计算页数，章节数:', book.chapters.length)
+  
+  for (let i = 0; i < book.chapters.length; i++) {
     await nextTick()
     await (new Promise(resolve => setTimeout(resolve)))
     computingChapterIndex.value = i
-    const tmpPages = Object.freeze(splitTextToPages(book!.chapters[i].contents))
-    book!.chapters[i].maxPage = store.singleColumnMode ? tmpPages.length - 1 : Math.ceil(tmpPages.length / 2) - 1
-    book!.chapters[i].splitPages = tmpPages
+    
+    console.log(`处理第${i+1}章，内容行数:`, book.chapters[i].contents.length)
+    
+    // 确保章节内容不为空
+    if (!book.chapters[i].contents || book.chapters[i].contents.length === 0) {
+      console.warn(`第${i+1}章内容为空，添加默认内容`)
+      book.chapters[i].contents = [book.chapters[i].title || '空章节']
+    }
+    
+    const tmpPages = Object.freeze(splitTextToPages(book.chapters[i].contents))
+    console.log(`第${i+1}章分页结果:`, tmpPages.length, '页')
+    
+    book.chapters[i].maxPage = store.singleColumnMode ? 
+      Math.max(0, tmpPages.length - 1) : 
+      Math.max(0, Math.ceil(tmpPages.length / 2) - 1)
+    
+    book.chapters[i].splitPages = tmpPages
+    
+    console.log(`第${i+1}章最大页数:`, book.chapters[i].maxPage)
   }
+  
   computingPage.value = false
-  store.maxPage = currentChapterTitle.value.maxPage || 0
+  store.maxPage = currentChapterTitle.value?.maxPage || 0
+  console.log('当前章节最大页数:', store.maxPage)
+  
   if (currentPage.value > store.maxPage) {
     currentPage.value = store.maxPage
   }
+  
+  console.log('绘制页面:', currentPage.value)
   drawPage(currentPage.value)
 }
 
@@ -443,6 +473,9 @@ const loadRemoteUrl = async (url: string, customName?: string) => {
 
 // 提取处理文本内容的通用方法
 const processTxtContent = (txtContent: string, fileName: string) => {
+  console.log('处理文本内容，文件名:', fileName)
+  console.log('文本长度:', txtContent.length, '字符')
+  
   store.currentTxt = fileName
 
   // 处理换行符 & 分割成数组
@@ -450,11 +483,14 @@ const processTxtContent = (txtContent: string, fileName: string) => {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .split('\n')
+  
+  console.log('行数:', contentLines.length)
 
   const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
   type T = { index: number, title: string, contents: string[] }
   const chapters: T[] = []
 
+  // 查找所有章节
   for (let i = 0; i < contentLines.length; i++) {
     if (contentLines[i].match(chapterReg)) {
       chapters.push({
@@ -464,23 +500,45 @@ const processTxtContent = (txtContent: string, fileName: string) => {
       })
     }
   }
+  
+  console.log('找到章节数:', chapters.length)
 
-  store.chapters = chapters.map<IChapter>((value, index, array) => {
-    const currentIndex = value.index
-    let nextIndex = array[index + 1]?.index ?? contentLines.length
-    return {
-      title: value.title,
-      contents: contentLines.slice(currentIndex, nextIndex)
-    }
-  })
+  // 如果找到了章节，按章节处理
+  if (chapters.length > 0) {
+    store.chapters = chapters.map<IChapter>((value, index, array) => {
+      const currentIndex = value.index
+      let nextIndex = array[index + 1]?.index ?? contentLines.length
+      return {
+        title: value.title,
+        contents: contentLines.slice(currentIndex, nextIndex)
+      }
+    })
 
-  store.chapters.unshift({
-    title: fileName,
-    contents: [fileName].concat(contentLines.slice(0, chapters[0]?.index || 0))
-  })
+    // 添加文件开头到第一章之间的内容作为"前言"章节
+    store.chapters.unshift({
+      title: fileName,
+      contents: [fileName].concat(contentLines.slice(0, chapters[0]?.index || 0))
+    })
+  } else {
+    // 如果没有找到章节，将整个文件作为一个章节处理
+    console.log('未找到章节，将整个文件作为一个章节处理')
+    store.chapters = [{
+      title: fileName,
+      contents: [fileName].concat(contentLines)
+    }]
+  }
+
+  console.log('最终章节数:', store.chapters.length)
+  console.log('第一章内容行数:', store.chapters[0].contents.length)
 
   store.currentChapterIndex = 0
-  store.addToBookshelf()
+  const book = store.addToBookshelf()
+  
+  // 确保页面计算和渲染
+  nextTick(() => {
+    console.log('开始刷新页面计算')
+    refreshMaxPage(book)
+  })
 }
 </script>
 
