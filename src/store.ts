@@ -180,6 +180,7 @@ const defaultState: StoreType = {
     localStorage.setItem('bookmarks', JSON.stringify(store.bookmarks))
   },
   read(book: IBook) {
+    // 先设置当前文本名称，这样会触发标题更新
     this.currentTxt = book.title
     this.chapters = book.chapters
 

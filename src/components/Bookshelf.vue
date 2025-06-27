@@ -245,11 +245,11 @@ $page-indicator: 50px;
 
 .bookshelf {
   display: flex;
-  //align-items: center;
-  //justify-content: center;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: hidden;
 }
 
 .file-placeholder {
@@ -272,13 +272,23 @@ $page-indicator: 50px;
   width: 150px;
   height: 200px;
   position: relative;
-  margin-right: 20px;
+  margin: 10px;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 
   &-delete {
     position: absolute;
     right: 8px;
     top: 8px;
     cursor: pointer;
+    background-color: rgba(255, 0, 0, 0.7);
+    color: white;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
   }
 }
 
@@ -310,18 +320,28 @@ $page-indicator: 50px;
 
 .booklist {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  overflow-y: auto;
+  max-height: calc(100% - 120px);
+  padding: 20px;
+  margin-bottom: 100px; /* 为底部的URL输入区域留出空间 */
 }
 
 /* 远程URL加载相关样式 */
 .remote-url-container {
   position: absolute;
-  bottom: 20px;
+  bottom: 0;
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 10px;
+  background-color: var(--color-background);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 .url-toggle-btn {
@@ -385,7 +405,24 @@ $page-indicator: 50px;
 }
 
 /* 添加一些响应式样式 */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .booklist {
+    justify-content: space-around;
+    padding: 10px;
+  }
+  
+  .book {
+    width: 120px;
+    height: 160px;
+    margin: 8px;
+    
+    .cover {
+      padding: 15px;
+      font-size: 0.9em;
+      -webkit-line-clamp: 6;
+    }
+  }
+  
   .url-input-container,
   .share-link-container {
     flex-direction: column;
@@ -405,8 +442,34 @@ $page-indicator: 50px;
     
     .btn {
       margin-bottom: 5px;
+      width: 100%;
     }
   }
 }
 
+/* 小屏幕手机适配 */
+@media (max-width: 480px) {
+  .book {
+    width: 100px;
+    height: 140px;
+    margin: 5px;
+    
+    .cover {
+      padding: 10px;
+      font-size: 0.8em;
+      -webkit-line-clamp: 5;
+    }
+    
+    &-delete {
+      font-size: 0.7em;
+      padding: 2px 4px;
+    }
+  }
+  
+  .file-placeholder {
+    font-size: 0.9em;
+    text-align: center;
+    padding: 0 20px;
+  }
+}
 </style>

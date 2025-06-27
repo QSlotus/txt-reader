@@ -83,6 +83,32 @@ const { drawPage, drawCachedPage } = usePageDrawer(ctx, canvasWidth, canvasHeigh
 
 const { animate } = usePageAnimation(drawPage, drawCachedPage)
 
+// 更新页面标题
+const updateDocumentTitle = () => {
+  if (store.currentTxt) {
+    // 当正在阅读文本时，设置标题为"文本名称 - TXT阅读器"
+    document.title = `${store.currentTxt} - TXT阅读器`
+  } else {
+    // 当在书架页面时，恢复默认标题
+    document.title = 'TXT阅读器'
+  }
+}
+
+// 监听当前阅读文本变化
+watch(() => store.currentTxt, (newValue) => {
+  updateDocumentTitle()
+}, { immediate: true })
+
+// 在组件挂载时设置初始标题
+onMounted(() => {
+  updateDocumentTitle()
+})
+
+// 在组件卸载前恢复默认标题
+onBeforeUnmount(() => {
+  document.title = 'TXT阅读器'
+})
+
 watch(() => ({
   page: currentPage.value,
   chapterIndex: store.currentChapterIndex
