@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { store } from '@/store.js'
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, computed } from 'vue'
 
 let hiddenTimer: number | null = null
 watch(() => store.showMenu, (newVal) => {
@@ -12,6 +12,42 @@ watch(() => store.showMenu, (newVal) => {
   }
 })
 
+// 检查URL是否包含url参数
+const hasUrlParam = computed(() => {
+  return window.location.search.includes('url=')
+})
+
+// 复制当前页面URL
+const copyCurrentUrl = () => {
+  const currentUrl = window.location.href
+  
+  try {
+    // 现代浏览器API
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(currentUrl)
+        .then(() => {
+          alert('当前页面链接已复制，可直接分享')
+        })
+        .catch(err => {
+          console.error('复制失败:', err)
+          alert('复制失败，请手动复制浏览器地址栏')
+        })
+    } else {
+      // 创建临时输入框
+      const tempInput = document.createElement('input')
+      tempInput.value = currentUrl
+      document.body.appendChild(tempInput)
+      tempInput.select()
+      document.execCommand('copy')
+      document.body.removeChild(tempInput)
+      alert('当前页面链接已复制，可直接分享')
+    }
+  } catch (err) {
+    console.error('复制失败:', err)
+    alert('复制失败，请手动复制浏览器地址栏')
+  }
+}
+
 </script>
 <template>
   <div :class="{ show: store.showMenu }" class="toolbar">
@@ -21,6 +57,7 @@ watch(() => store.showMenu, (newVal) => {
     <button class="btn" @click.stop="store.addBookmark()">添加书签(a)</button>
     <button class="btn" @click.stop="store.backToBookshelf()">回到书架(b)</button>
     <button class="btn" @click.stop="store.switchSettings()">打开设置(s)</button>
+    <button v-if="hasUrlParam" class="btn share-btn" @click.stop="copyCurrentUrl()">分享链接</button>
   </div>
 </template>
 <style lang="scss">
@@ -62,6 +99,14 @@ $page-indicator: 50px;
     margin: 0 4px;
     flex: 1;
     height: 100%;
+  }
+  
+  .share-btn {
+    background-color: #4caf50;
+    
+    &:hover {
+      background-color: #45a049;
+    }
   }
 }
 

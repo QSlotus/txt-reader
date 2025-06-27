@@ -35,6 +35,34 @@ async function init() {
       showDelete: false
     }
   })
+  
+  // 检查URL参数，如果存在url参数，则自动加载对应的远程TXT文件
+  checkUrlParams()
+}
+
+// 检查URL参数并加载远程文件
+const checkUrlParams = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const remoteFileUrl = urlParams.get('url')
+  const customName = urlParams.get('name') // 支持自定义名称参数
+  
+  if (remoteFileUrl) {
+    try {
+      // 解码URL，确保特殊字符处理正确
+      const decodedUrl = decodeURIComponent(remoteFileUrl)
+      console.log('从URL参数加载远程文件:', decodedUrl)
+      
+      // 如果URL参数中包含远程文件地址，则自动加载
+      loadRemoteUrl(decodedUrl, customName ? decodeURIComponent(customName) : undefined)
+      
+      // 不再清除URL参数，保留原始URL以便于分享
+      // const newUrl = window.location.pathname + window.location.hash
+      // window.history.replaceState({}, '', newUrl)
+    } catch (error) {
+      console.error('解析URL参数失败:', error)
+      alert('解析URL参数失败，请检查链接格式')
+    }
+  }
 }
 
 init()
@@ -265,48 +293,194 @@ const resolveFile = (files?: FileList) => {
         }
       }
 
-      store.currentTxt = txt.name
-
-      // 处理换行符 & 分割成数组
-      const contentLines = txtContent
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .split('\n')
-
-      const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
-      type T = { index: number, title: string, contents: string[] }
-      const chapters: T[] = []
-
-      for (let i = 0; i < contentLines.length; i++) {
-        if (contentLines[i].match(chapterReg)) {
-          chapters.push({
-            index: i,
-            title: contentLines[i],
-            contents: []
-          })
-        }
-      }
-
-      store.chapters = chapters.map<IChapter>((value, index, array) => {
-        const currentIndex = value.index
-        let nextIndex = array[index + 1]?.index ?? contentLines.length
-        return {
-          title: value.title,
-          contents: contentLines.slice(currentIndex, nextIndex)
-        }
-      })
-
-      store.chapters.unshift({
-        title: txt.name,
-        contents: [txt.name].concat(contentLines.slice(0, chapters[0]?.index || 0))
-      })
-
-      store.currentChapterIndex = 0
-      store.addToBookshelf()
+      processTxtContent(txtContent, txt.name)
     }
 
     fr.readAsArrayBuffer(txt)
   }
+}
+
+// 处理远程URL加载
+const loadRemoteUrl = async (url: string, customName?: string) => {
+  // 显示加载状态
+  computingPage.value = true
+  const loadingMessage = '正在加载远程文件...'
+  
+  try {
+    console.log('开始加载远程文件:', url)
+    
+    // 检查URL格式
+    if (!url.match(/^https?:\/\//i)) {
+      url = 'https://' + url
+    }
+    
+    // 如果提供了自定义名称，直接使用
+    let fileName = customName || 'remote-file.txt'
+    
+    // 如果没有自定义名称，尝试从URL中提取
+    if (!customName) {
+      try {
+        // 尝试从URL中提取文件名
+        const urlObj = new URL(url)
+        const pathParts = urlObj.pathname.split('/')
+        const lastPart = pathParts[pathParts.length - 1]
+        
+        // 如果路径最后部分包含.txt，则使用它作为文件名
+        if (lastPart.includes('.txt')) {
+          fileName = decodeURIComponent(lastPart)
+        } else {
+          // 尝试从查询参数中提取可能的文件名
+          for (const [key, value] of urlObj.searchParams.entries()) {
+            if (value.toLowerCase().endsWith('.txt')) {
+              fileName = decodeURIComponent(value)
+              break
+            }
+          }
+          
+          // 如果URL中有文件名相关的参数
+          if (urlObj.searchParams.has('filename')) {
+            fileName = decodeURIComponent(urlObj.searchParams.get('filename') || 'remote-file.txt')
+          } else if (urlObj.searchParams.has('name')) {
+            fileName = decodeURIComponent(urlObj.searchParams.get('name') || 'remote-file.txt')
+          }
+        }
+        
+        // 清理文件名（移除查询参数等）
+        fileName = fileName.split('?')[0]
+      } catch (e) {
+        console.warn('从URL提取文件名失败，使用默认名称', e)
+      }
+    }
+    
+    // 确保文件名以.txt结尾
+    if (!fileName.toLowerCase().endsWith('.txt')) {
+      fileName += '.txt'
+    }
+    
+    console.log('文件名:', fileName)
+
+    // 尝试直接获取远程文件
+    let response: Response | null = null
+    let fetchError: Error | null = null
+    
+    try {
+      response = await fetch(url, {
+        mode: 'cors',
+        headers: {
+          'Accept': 'text/plain,*/*'
+        }
+      })
+    } catch (error) {
+      fetchError = error as Error
+      console.warn('直接获取文件失败，尝试使用代理:', error)
+    }
+    
+    // 如果直接获取失败，尝试使用代理服务
+    if (!response || !response.ok) {
+      // 使用CORS代理服务
+      const corsProxies = [
+        'https://cors-anywhere.herokuapp.com/',
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?'
+      ]
+      
+      for (const proxy of corsProxies) {
+        try {
+          console.log('尝试使用代理:', proxy)
+          const proxyUrl = proxy + encodeURIComponent(url)
+          response = await fetch(proxyUrl, {
+            headers: {
+              'Accept': 'text/plain,*/*',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          
+          if (response.ok) {
+            console.log('使用代理成功获取文件')
+            break
+          }
+        } catch (error) {
+          console.warn(`代理 ${proxy} 获取失败:`, error)
+        }
+      }
+    }
+    
+    if (!response || !response.ok) {
+      throw fetchError || new Error(`加载失败: ${response?.status} ${response?.statusText}`)
+    }
+
+    // 获取文件内容
+    const buffer = await response.arrayBuffer()
+    console.log('文件已下载，大小:', buffer.byteLength, '字节')
+    
+    // 默认尝试解码为 UTF-8
+    let decoder = new TextDecoder('utf-8', { fatal: false })
+    let txtContent = decoder.decode(new Uint8Array(buffer))
+
+    // 判断是否乱码（简单判断法：是否有大量替换字符）
+    if (txtContent.includes('\uFFFD')) {
+      console.log('检测到UTF-8解码可能有问题，尝试GBK解码')
+      // 尝试使用 GBK 解码
+      try {
+        decoder = new TextDecoder('gbk', { fatal: true })
+        txtContent = decoder.decode(new Uint8Array(buffer))
+      } catch (e) {
+        console.warn('无法用 GBK 解码，可能是其他编码格式。')
+      }
+    }
+
+    // 处理文本内容
+    processTxtContent(txtContent, fileName)
+    console.log('文件加载并处理完成')
+  } catch (error) {
+    const errorMsg = `加载远程文件失败: ${error instanceof Error ? error.message : '未知错误'}`
+    alert(errorMsg)
+    console.error('加载远程文件失败:', error)
+  } finally {
+    computingPage.value = false
+  }
+}
+
+// 提取处理文本内容的通用方法
+const processTxtContent = (txtContent: string, fileName: string) => {
+  store.currentTxt = fileName
+
+  // 处理换行符 & 分割成数组
+  const contentLines = txtContent
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+
+  const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
+  type T = { index: number, title: string, contents: string[] }
+  const chapters: T[] = []
+
+  for (let i = 0; i < contentLines.length; i++) {
+    if (contentLines[i].match(chapterReg)) {
+      chapters.push({
+        index: i,
+        title: contentLines[i],
+        contents: []
+      })
+    }
+  }
+
+  store.chapters = chapters.map<IChapter>((value, index, array) => {
+    const currentIndex = value.index
+    let nextIndex = array[index + 1]?.index ?? contentLines.length
+    return {
+      title: value.title,
+      contents: contentLines.slice(currentIndex, nextIndex)
+    }
+  })
+
+  store.chapters.unshift({
+    title: fileName,
+    contents: [fileName].concat(contentLines.slice(0, chapters[0]?.index || 0))
+  })
+
+  store.currentChapterIndex = 0
+  store.addToBookshelf()
 }
 </script>
 
@@ -324,7 +498,7 @@ const resolveFile = (files?: FileList) => {
     <Chapter @chapter-change="onChapterChange" />
     <Bookmark />
     <template v-if="!currentBook">
-      <Bookshelf @upload="resolveFile($event)" />
+      <Bookshelf @upload="resolveFile($event)" @loadUrl="loadRemoteUrl" />
     </template>
     <PageIndicator />
     <ToolBar />
