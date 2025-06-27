@@ -54,8 +54,10 @@ export function usePageSplitter(textLinesRef: Ref<string[]>, canvasWidth: Ref<nu
     ctx.font = `${fontSize.value}px sans-serif`
     ctx.textBaseline = 'top'
 
-    // 计算可用宽度为 canvasWidth 的一半
-    const availableWidth = store.singleColumnMode ? canvasWidth.value : canvasWidth.value / 2 - padding * 2
+    // 计算可用宽度，增加安全边距避免文字被截断
+    const availableWidth = store.singleColumnMode 
+      ? canvasWidth.value - padding * 2 // 单列模式下减去两侧的内边距
+      : (canvasWidth.value / 2) - padding * 2 // 双列模式下是画布宽度的一半减去内边距
     
     console.log('可用宽度:', availableWidth, '可用高度:', canvasHeight.value - padding * 2)
 

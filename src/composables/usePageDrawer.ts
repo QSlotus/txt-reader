@@ -137,6 +137,7 @@ export function usePageDrawer(
       }
     } else {
       if (pageIndex < pages.value.length && pages.value[pageIndex]) {
+        // 单列模式，居中显示内容
         drawSinglePage(ctxVal, pages.value[pageIndex], 0, pageIndex === 0)
       }
     }
@@ -181,7 +182,10 @@ export function usePageDrawer(
         drawSinglePage(tempCtx, drawingPages[rightPageIndex], canvasWidth.value / 2)
       }
     } else {
-      drawSinglePage(tempCtx, drawingPages[pageIndex], 0, pageIndex === 0)
+      // 单列模式，居中显示内容
+      if (pageIndex < drawingPages.length && drawingPages[pageIndex]) {
+        drawSinglePage(tempCtx, drawingPages[pageIndex], 0, pageIndex === 0)
+      }
     }
 
     ctx.save()

@@ -52,7 +52,7 @@ try {
 }
 
 const defaultSettings = {
-  fontSize: 36,
+  fontSize: 42,
   lineHeight: 72,
   theme: 'default'
 }
@@ -75,7 +75,7 @@ const defaultState: StoreType = {
   showChapters: false,
   showBookmarks: false,
   showSettings: false,
-  singleColumnMode: !!getStorage('singleColumnMode'),
+  singleColumnMode: getStorage('singleColumnMode') ?? true,
   showMenu: false,
   isAnimating: false,
   // txtContent: [],
@@ -96,6 +96,7 @@ const defaultState: StoreType = {
   },
   switchColumnMode() {
     this.singleColumnMode = !this.singleColumnMode
+    localStorage.setItem('singleColumnMode', JSON.stringify(this.singleColumnMode))
   },
   switchShowBookmarks() {
     if (!currentBook.value) return

@@ -478,44 +478,44 @@ const processTxtContent = (txtContent: string, fileName: string) => {
   
   store.currentTxt = fileName
 
-  // 处理换行符 & 分割成数组
-  const contentLines = txtContent
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .split('\n')
+      // 处理换行符 & 分割成数组
+      const contentLines = txtContent
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
   
   console.log('行数:', contentLines.length)
 
-  const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
-  type T = { index: number, title: string, contents: string[] }
-  const chapters: T[] = []
+      const chapterReg = /^\s*第\s*([\d一二三四五六七八九十百千万.]+?)\s*[章卷话]/ig
+      type T = { index: number, title: string, contents: string[] }
+      const chapters: T[] = []
 
   // 查找所有章节
-  for (let i = 0; i < contentLines.length; i++) {
-    if (contentLines[i].match(chapterReg)) {
-      chapters.push({
-        index: i,
-        title: contentLines[i],
-        contents: []
-      })
-    }
-  }
-  
+      for (let i = 0; i < contentLines.length; i++) {
+        if (contentLines[i].match(chapterReg)) {
+          chapters.push({
+            index: i,
+            title: contentLines[i],
+            contents: []
+          })
+        }
+      }
+
   console.log('找到章节数:', chapters.length)
 
   // 如果找到了章节，按章节处理
   if (chapters.length > 0) {
-    store.chapters = chapters.map<IChapter>((value, index, array) => {
-      const currentIndex = value.index
-      let nextIndex = array[index + 1]?.index ?? contentLines.length
-      return {
-        title: value.title,
-        contents: contentLines.slice(currentIndex, nextIndex)
-      }
-    })
+      store.chapters = chapters.map<IChapter>((value, index, array) => {
+        const currentIndex = value.index
+        let nextIndex = array[index + 1]?.index ?? contentLines.length
+        return {
+          title: value.title,
+          contents: contentLines.slice(currentIndex, nextIndex)
+        }
+      })
 
     // 添加文件开头到第一章之间的内容作为"前言"章节
-    store.chapters.unshift({
+      store.chapters.unshift({
       title: fileName,
       contents: [fileName].concat(contentLines.slice(0, chapters[0]?.index || 0))
     })
@@ -531,7 +531,7 @@ const processTxtContent = (txtContent: string, fileName: string) => {
   console.log('最终章节数:', store.chapters.length)
   console.log('第一章内容行数:', store.chapters[0].contents.length)
 
-  store.currentChapterIndex = 0
+      store.currentChapterIndex = 0
   const book = store.addToBookshelf()
   
   // 确保页面计算和渲染
